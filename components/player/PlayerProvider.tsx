@@ -100,7 +100,8 @@ function bismillahUrl(anyAyahAudio: string): string {
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const { locale, prefs, translationId, vibe, setVibe, pushHistory } = useApp();
+  const { locale, prefs, setPrefs, translationId, vibe, setVibe, pushHistory } =
+    useApp();
   const recitationId = getReciter(prefs.reciter).recitationId;
 
   const [mode, setModeState] = useState<Mode>("player");
@@ -277,6 +278,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         recitationId
       );
   }, [segments, segIndex, translationId, recitationId]);
+
+  // Pleyer rejimida oxirgi to'xtagan joy eslab qolinadi
+  useEffect(() => {
+    if (mode !== "player" || !track) return;
+    if (prefs.lastSurah === track.surah && prefs.lastAyah === track.ayah) return;
+    setPrefs({ lastSurah: track.surah, lastAyah: track.ayah });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, track?.surah, track?.ayah]);
 
   /* ——— Karaoke ————————————————————————————————————— */
 

@@ -36,6 +36,11 @@ export interface Prefs {
   karaoke: boolean;
   /** O'qilayotgan so'z ostida ma'nosi ko'rsatiladi */
   wordByWord: boolean;
+  /** So'z tarjimasi o'lchami: 1–4 */
+  wordSize: number;
+  /** Pleyerda oxirgi to'xtagan joy */
+  lastSurah: number | null;
+  lastAyah: number;
   /** Onboarding overlay bir marta ko'rsatilgach yopiladi */
   onboarded: boolean;
 }
@@ -59,6 +64,9 @@ export const DEFAULT_PREFS: Prefs = {
   repeat: "off",
   karaoke: true,
   wordByWord: false,
+  wordSize: 2,
+  lastSurah: null,
+  lastAyah: 1,
   onboarded: false,
 };
 
@@ -66,6 +74,9 @@ export const DEFAULT_PREFS: Prefs = {
 export const ARABIC_SIZES = [26, 32, 38, 46, 54, 64];
 
 export const RATES = [0.75, 1, 1.25, 1.5, 2];
+
+/** So'z tarjimasi o'lchami (px) */
+export const WORD_SIZES = [11, 13, 15, 18];
 
 export interface VibeSession {
   mood: MoodId;
@@ -84,6 +95,13 @@ export interface PastSession {
   liked?: boolean;
 }
 
+export interface SavedAyah {
+  surah: number;
+  ayah: number;
+  at: number;
+}
+
+const SAVED_KEY = "noor.saved.v1";
 const PREFS_KEY = "noor.prefs.v2";
 const VIBE_KEY = "noor.vibe.v2";
 const HISTORY_KEY = "noor.history.v2";
@@ -132,6 +150,14 @@ export function loadHistory(): PastSession[] {
 
 export function saveHistory(list: PastSession[]): void {
   write(HISTORY_KEY, list.slice(0, 12));
+}
+
+export function loadSaved(): SavedAyah[] {
+  return readJson<SavedAyah[]>(SAVED_KEY) ?? [];
+}
+
+export function saveSaved(list: SavedAyah[]): void {
+  write(SAVED_KEY, list.slice(0, 200));
 }
 
 /** "Kecha", "3 kun oldin", "O'tgan hafta" */

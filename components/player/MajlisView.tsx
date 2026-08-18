@@ -3,423 +3,393 @@
 import { useEffect, useRef, useState } from "react";
 import { AyahText } from "@/components/player/AyahText";
 import { usePlayer } from "@/components/player/PlayerProvider";
+import { SettingsRail } from "@/components/player/SettingsRail";
 import { useApp } from "@/components/providers/AppProvider";
-import { Icon } from "@/components/ui/Icon";
-import { BISMILLAH_TEXT, totalMinutes } from "@/lib/queue";
-import { SURAHS, getReciter } from "@/lib/sakinah";
-import { ARABIC_SIZES, formatClock } from "@/lib/session";
+import { Icon, type IconName } from "@/components/ui/Icon";
+import { BISMILLAH_TEXT } from "@/lib/queue";
+import { SURAHS } from "@/lib/sakinah";
+import { ARABIC_SIZES, RATES, formatClock } from "@/lib/session";
 
 const SLEEP_OPTIONS = [0, 15, 30, 45, 60];
 
 /**
- * Figmadagi «Player / Majlis — Ambient Session» (Concept B):
- * chapda sessiya ro'yxati, markazda oyatlar, o'ngda qori va so'zma-so'z,
- * pastda oyatlarga bo'lingan vaqt chizig'i.
+ * Qur'on pleyeri — Figmadagi «Majlis — Ambient Session» asosida.
+ * Chapda yig'iladigan oyatlar jadvali, markazda oldingi/joriy/keyingi oyat,
+ * pastda to'liq sura bo'yicha progress va boshqaruv, o'ngda sozlamalar.
  */
-export function MajlisView({ onEditSession }: { onEditSession: () => void }) {
-  const { t, ln, prefs, setPrefs } = useApp();
+export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
+  const { t, prefs, setPrefs, isSaved, toggleSaved } = useApp();
   const player = usePlayer();
   const { segment, track, ayah, ayahs, cursor } = player;
 
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const centerRef = useRef<HTMLDivElement>(null);
+  const [listOpen, setListOpen] = useState(true);
   const activeRef = useRef<HTMLDivElement>(null);
 
-  // Joriy oyatni ko'rinishda ushlab turamiz
   useEffect(() => {
-    if (!autoScroll || !activeRef.current) return;
-    activeRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [track?.ayah, autoScroll]);
+    activeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [track?.ayah]);
 
-  if (!segment || !track) {
-    return (
-      <div className="flex flex-1 items-center justify-center px-6 text-center">
-        <p className="text-sm text-white/50">{t("player.empty")}</p>
-      </div>
-    );
-  }
+  if (!segment || !track) return null;
 
   const surahName =
     SURAHS[segment.surah]?.slug ??
     player.chapters.find((c) => c.id === segment.surah)?.slug ??
     "";
-  const reciter = getReciter(prefs.reciter);
-  const fontPx = ARABIC_SIZES[Math.min(prefs.fontSize, ARABIC_SIZES.length) - 1];
+  const verses =
+    SURAHS[segment.surah]?.verses ??
+    player.chapters.find((c) => c.id === segment.surah)?.verses ??
+    0;
 
+  const fontPx = ARABIC_SIZES[Math.min(prefs.fontSize, ARABIC_SIZES.length) - 1];
   const clipProgress =
     player.clipLength > 0 ? player.elapsed / player.clipLength : 0;
-  const remaining = Math.max(0, player.clipLength - player.elapsed);
 
-  async function shareAyah() {
-    if (!ayah) return;
-    try {
-      await navigator.clipboard.writeText(
-        `${ayah.uthmani}\n\n${ayah.translation}\n— ${surahName} ${ayah.surah}:${ayah.ayah}`
-      );
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard yo'q bo'lsa jim o'tamiz */
-    }
-  }
+  // Progress butun sura bo'yicha
+  const surahProgress =
+    player.tracks.length > 0
+      ? (player.cursor.pos + clipProgress) / player.tracks.length
+      : 0;
+
+  const saved = isSaved(track.surah, track.ayah);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 gap-4 px-4 pb-2 sm:px-6 xl:gap-5">
-        {/* ——— Chap: sessiya ro'yxati ——— */}
-        <aside className="hidden w-[280px] shrink-0 flex-col rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4 backdrop-blur-sm lg:flex">
-          <p className="text-[10px] font-semibold tracking-widest text-white/35">
-            {t("majlis.session")}
-          </p>
-          <h2 className="mt-1 text-base font-semibold text-white">
-            {surahName} {segment.surah}:{segment.from}
-            {segment.to !== segment.from && ` – ${segment.to}`}
-          </h2>
+      <div className="flex min-h-0 flex-1 gap-4 px-4 pb-2 sm:px-6">
+        {/* ——— Chap: oyatlar jadvali (yig'iladi) ——— */}
+        <aside
+          className={[
+            "hidden shrink-0 flex-col rounded-2xl border border-white/[0.07] bg-white/[0.04] backdrop-blur-sm transition-all duration-300 lg:flex",
+            listOpen ? "w-[280px] p-4" : "w-[56px] items-center p-2",
+          ].join(" ")}
+        >
+          <button
+            type="button"
+            onClick={() => setListOpen((v) => !v)}
+            aria-label={listOpen ? t("player.collapse") : t("player.expand")}
+            title={listOpen ? t("player.collapse") : t("player.expand")}
+            className={[
+              "flex h-9 items-center gap-2 rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95",
+              listOpen ? "w-full px-2" : "w-9 justify-center",
+            ].join(" ")}
+          >
+            <Icon name="list" size={17} />
+            {listOpen && (
+              <span className="min-w-0 truncate text-sm font-semibold text-white">
+                {surahName} · {verses}
+              </span>
+            )}
+          </button>
 
-          <ol className="sk-scroll mt-4 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-            {(ayahs ?? []).map((a) => {
-              const active = a.ayah === track.ayah;
-              return (
-                <li key={a.key}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const idx = player.tracks.findIndex(
-                        (x) => x.surah === a.surah && x.ayah === a.ayah
-                      );
-                      player.jumpToAyah(idx);
-                    }}
-                    className={[
-                      "relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition",
-                      active ? "bg-white/[0.09]" : "hover:bg-white/[0.05]",
-                    ].join(" ")}
-                  >
-                    {active && (
-                      <span className="tone-bg absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full" />
-                    )}
-                    <span
+          {listOpen && (
+            <ol className="sk-scroll mt-3 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
+              {(ayahs ?? []).map((a) => {
+                const active = a.ayah === track.ayah;
+                return (
+                  <li key={a.key}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        player.jumpToAyah(
+                          player.tracks.findIndex(
+                            (x) => x.surah === a.surah && x.ayah === a.ayah
+                          )
+                        )
+                      }
                       className={[
-                        "w-9 shrink-0 text-xs tabular-nums",
-                        active ? "font-semibold text-white" : "text-white/40",
+                        "relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition",
+                        active ? "bg-white/[0.09]" : "hover:bg-white/[0.05]",
                       ].join(" ")}
                     >
-                      {a.surah}:{a.ayah}
-                    </span>
-                    <span
-                      className="arabic min-w-0 flex-1 truncate text-right font-arabic text-sm text-white/55"
-                      dir="rtl"
-                    >
-                      {a.words
-                        .slice(0, 2)
-                        .map((w) => w.uthmani)
-                        .join(" ")}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
+                      {active && (
+                        <span className="tone-bg absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full" />
+                      )}
+                      <span
+                        className={[
+                          "w-6 shrink-0 text-xs tabular-nums",
+                          active ? "font-semibold text-white" : "text-white/40",
+                        ].join(" ")}
+                      >
+                        {a.ayah}
+                      </span>
+                      <span
+                        className="arabic min-w-0 flex-1 truncate text-right font-arabic text-sm text-white/55"
+                        dir="rtl"
+                      >
+                        {a.words
+                          .slice(0, 2)
+                          .map((w) => w.uthmani)
+                          .join(" ")}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </aside>
 
-          <div className="mt-4 border-t border-white/10 pt-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-white">
-                {t("majlis.round", {
-                  i: player.segIndex + 1,
-                  n: player.segments.length,
-                })}
-              </span>
-              <span className="text-white/45">
-                {t("majlis.left", {
-                  n: Math.max(
-                    0,
-                    totalMinutes(player.segments.slice(player.segIndex))
-                  ),
-                })}
-              </span>
-            </div>
+        {/* ——— Markaz: oldingi · joriy · keyingi ——— */}
+        <div className="sk-scroll min-w-0 flex-1 overflow-y-auto px-1 pb-6 pr-4 text-center">
+          {cursor.bismillah && (
+            <p
+              className="arabic anim-fade-in py-10 text-center font-arabic text-white"
+              style={{ fontSize: `${Math.round(fontPx * 0.8)}px` }}
+            >
+              {BISMILLAH_TEXT}
+            </p>
+          )}
 
-            <div className="mt-2 flex gap-1.5">
-              {player.segments.slice(0, 8).map((_, i) => (
-                <span
-                  key={i}
-                  className={[
-                    "h-1 flex-1 rounded-full",
-                    i <= player.segIndex ? "tone-bg" : "bg-white/15",
-                  ].join(" ")}
+          {(ayahs ?? []).map((a) => {
+            const active = a.ayah === track.ayah && !cursor.bismillah;
+            const distance = Math.abs(a.ayah - track.ayah);
+            // Faqat oldingi va keyingi bittasi ko'rinadi
+            const opacity = active ? 1 : distance === 1 ? 0.3 : 0;
+
+            return (
+              <div
+                key={a.key}
+                ref={active ? activeRef : undefined}
+                aria-hidden={opacity === 0}
+                className="transition-all duration-500"
+                style={{
+                  opacity,
+                  height: opacity === 0 ? 0 : undefined,
+                  overflow: opacity === 0 ? "hidden" : undefined,
+                  paddingTop: opacity === 0 ? 0 : 16,
+                  paddingBottom: opacity === 0 ? 0 : 16,
+                }}
+              >
+                {active && (
+                  <span className="tone-bg-soft tone-text mb-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold">
+                    <span className="tone-bg h-1.5 w-1.5 rounded-full" />
+                    {a.surah}:{a.ayah}
+                  </span>
+                )}
+
+                <AyahText
+                  ayah={a}
+                  active={active}
+                  wordIndex={player.wordIndex}
+                  fontPx={fontPx}
                 />
-              ))}
-            </div>
+
+                {active && (
+                  <>
+                    {prefs.showTransliteration && a.transliteration && (
+                      <p className="mx-auto mt-4 max-w-3xl text-center text-sm italic text-white/45">
+                        {a.transliteration}
+                      </p>
+                    )}
+                    {prefs.showTranslation && a.translation && (
+                      <p className="mx-auto mt-4 max-w-3xl text-center text-base leading-relaxed text-white/80">
+                        {a.translation}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ——— Pastki boshqaruv ——— */}
+      <div className="px-4 pb-4 sm:px-6">
+        <div className="rounded-2xl border border-white/[0.07] bg-black/30 px-4 py-3 backdrop-blur-md">
+          {/* To'liq sura progressi */}
+          <div className="flex items-center gap-3">
+            <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-white/50">
+              {formatClock(player.elapsed)}
+            </span>
 
             <button
               type="button"
-              onClick={onEditSession}
-              className="mt-4 h-10 w-full rounded-xl bg-white/[0.07] text-sm font-medium text-white/85 transition hover:bg-white/15 active:scale-95"
+              aria-label="seek"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                player.seekTo((e.clientX - r.left) / r.width);
+              }}
+              className="group relative h-4 flex-1"
             >
-              {t("majlis.edit")}
+              <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/15" />
+              <span
+                className="tone-bg absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full"
+                style={{ width: `${Math.min(100, surahProgress * 100)}%` }}
+              />
+              <span
+                className="tone-bg absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+                style={{ left: `${Math.min(100, surahProgress * 100)}%` }}
+              />
             </button>
-          </div>
-        </aside>
 
-        {/* ——— Markaz: oyatlar ——— */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <button
-            type="button"
-            onClick={() => setAutoScroll((v) => !v)}
-            aria-pressed={autoScroll}
-            className="mb-2 inline-flex h-8 w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 text-[11px] text-white/70 transition hover:bg-white/10"
-          >
-            <span
-              className={[
-                "h-1.5 w-1.5 rounded-full",
-                autoScroll ? "tone-bg" : "bg-white/30",
-              ].join(" ")}
-            />
-            {t("majlis.autoscroll")}
-          </button>
-
-          <div
-            ref={centerRef}
-            className="sk-scroll min-h-0 flex-1 overflow-y-auto pb-6 pl-1 pr-4"
-          >
-            {cursor.bismillah && (
-              <p
-                className="arabic anim-fade-in py-8 text-center font-arabic text-white"
-                style={{ fontSize: `${Math.round(fontPx * 0.8)}px` }}
-              >
-                {BISMILLAH_TEXT}
-              </p>
-            )}
-
-            {(ayahs ?? []).map((a) => {
-              const active = a.ayah === track.ayah && !cursor.bismillah;
-              return (
-                <div
-                  key={a.key}
-                  ref={active ? activeRef : undefined}
-                  className={[
-                    "py-4 transition-opacity duration-500",
-                    active ? "opacity-100" : "opacity-35",
-                  ].join(" ")}
-                >
-                  {active && (
-                    <span className="tone-bg-soft tone-text mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold">
-                      <span className="tone-bg h-1.5 w-1.5 rounded-full" />
-                      {a.surah}:{a.ayah}
-                    </span>
-                  )}
-
-                  <AyahText
-                    ayah={a}
-                    active={active}
-                    wordIndex={player.wordIndex}
-                    fontPx={fontPx}
-                  />
-
-                  {active && (
-                    <>
-                      {prefs.showTransliteration && a.transliteration && (
-                        <p className="mt-3 text-sm italic text-white/45">
-                          {a.transliteration}
-                        </p>
-                      )}
-                      {prefs.showTranslation && a.translation && (
-                        <p className="mt-3 text-base leading-relaxed text-white/80">
-                          {a.translation}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ——— O'ng: qori va so'zma-so'z ——— */}
-        <aside className="hidden w-[250px] shrink-0 flex-col gap-4 xl:flex">
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-5 text-center backdrop-blur-sm">
-            <span className="mx-auto flex h-[88px] w-[88px] items-center justify-center rounded-full bg-white/[0.07] text-2xl font-semibold text-white/70">
-              {reciter.name
-                .split(" ")
-                .slice(0, 2)
-                .map((w) => w[0])
-                .join("")}
+            <span className="w-16 shrink-0 text-[11px] tabular-nums text-white/50">
+              {t("player.surahProgress", {
+                done: track.ayah,
+                total: verses || segment.to,
+              })}
             </span>
-
-            <p className="mt-3 text-sm font-semibold text-white">
-              {reciter.name}
-            </p>
-            <p className="text-[11px] text-white/45">
-              {ln(reciter.style)} · {ln(reciter.place)}
-            </p>
-
           </div>
 
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-2 backdrop-blur-sm">
-            <Row
-              icon="back10"
-              label={t("majlis.speed")}
-              value={`${prefs.rate}x`}
-              onClick={() => {
-                const rates = [0.75, 1, 1.25, 1.5, 2];
+          {/* Tugmalar */}
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <Pill
+              onClick={() =>
                 setPrefs({
-                  rate: rates[(rates.indexOf(prefs.rate) + 1) % rates.length],
-                });
-              }}
-            />
-            <Row
-              icon="sun"
-              label={t("majlis.sleep")}
-              value={
-                player.sleepMinutes === 0
-                  ? t("majlis.sleepOff")
-                  : formatClock(player.sleepLeft)
+                  rate: RATES[(RATES.indexOf(prefs.rate) + 1) % RATES.length],
+                })
               }
-              onClick={() => {
-                const i = SLEEP_OPTIONS.indexOf(player.sleepMinutes);
+              label={t("majlis.speed")}
+            >
+              {prefs.rate}x
+            </Pill>
+
+            <RoundButton
+              icon="arrowLeft"
+              label="prev"
+              onClick={player.prev}
+            />
+            <RoundButton
+              icon="back10"
+              label="-10"
+              onClick={() => player.seekBy(-10)}
+            />
+            <button
+              type="button"
+              onClick={player.toggle}
+              aria-label={player.playing ? "pause" : "play"}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-night-base transition hover:brightness-90 active:scale-90"
+            >
+              <Icon
+                name={player.playing ? "pause" : "play"}
+                size={18}
+                filled={!player.playing}
+              />
+            </button>
+            <RoundButton
+              icon="forward10"
+              label="+10"
+              onClick={() => player.seekBy(10)}
+            />
+            <RoundButton icon="arrowRight" label="next" onClick={player.next} />
+
+            <Pill
+              onClick={() =>
+                setPrefs({
+                  repeat:
+                    prefs.repeat === "off"
+                      ? "ayah"
+                      : prefs.repeat === "ayah"
+                        ? "segment"
+                        : "off",
+                })
+              }
+              label={t("player.repeat")}
+              active={prefs.repeat !== "off"}
+            >
+              {t(`player.repeat.${prefs.repeat}`)}
+            </Pill>
+
+            <Pill
+              onClick={() =>
                 player.setSleepMinutes(
-                  SLEEP_OPTIONS[(i + 1) % SLEEP_OPTIONS.length]
-                );
-              }}
-            />
-            <Row
-              icon="share"
-              label={copied ? t("complete.copied") : t("majlis.share")}
-              onClick={shareAyah}
-            />
+                  SLEEP_OPTIONS[
+                    (SLEEP_OPTIONS.indexOf(player.sleepMinutes) + 1) %
+                      SLEEP_OPTIONS.length
+                  ]
+                )
+              }
+              label={t("majlis.sleep")}
+              active={player.sleepMinutes > 0}
+            >
+              {player.sleepMinutes === 0
+                ? t("majlis.sleepOff")
+                : formatClock(player.sleepLeft)}
+            </Pill>
+
+            <button
+              type="button"
+              onClick={() => toggleSaved(track.surah, track.ayah)}
+              aria-label={saved ? t("saved.remove") : t("saved.add")}
+              title={saved ? t("saved.remove") : t("saved.add")}
+              className={[
+                "flex h-10 w-10 items-center justify-center rounded-full transition active:scale-90",
+                saved ? "tone-bg-soft tone-text" : "text-white/70 hover:bg-white/10",
+              ].join(" ")}
+            >
+              <Icon name="bookmark" size={17} filled={saved} />
+            </button>
+
+            <label className="ml-1 flex items-center gap-2">
+              <Icon name="headphones" size={15} className="text-white/45" />
+              <span className="sr-only">{t("majlis.volume")}</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(player.volume * 100)}
+                onChange={(e) => player.setVolume(Number(e.target.value) / 100)}
+                className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-white/20 accent-[color:var(--sk-accent)]"
+              />
+            </label>
           </div>
-        </aside>
-      </div>
-
-      {/* ——— Pastki chiziq ——— */}
-      <div className="px-4 pb-4 sm:px-6">
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/[0.07] bg-black/30 px-4 py-3 backdrop-blur-md">
-          <button
-            type="button"
-            onClick={() => player.seekBy(-10)}
-            aria-label="-10"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white/75 transition hover:bg-white/10 active:scale-90"
-          >
-            <Icon name="back10" size={18} />
-          </button>
-
-          <button
-            type="button"
-            onClick={player.toggle}
-            aria-label={player.playing ? "pause" : "play"}
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-night-base transition hover:brightness-90 active:scale-90"
-          >
-            <Icon
-              name={player.playing ? "pause" : "play"}
-              size={18}
-              filled={!player.playing}
-            />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => player.seekBy(10)}
-            aria-label="+10"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white/75 transition hover:bg-white/10 active:scale-90"
-          >
-            <Icon name="forward10" size={18} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setPrefs({
-                repeat:
-                  prefs.repeat === "off"
-                    ? "ayah"
-                    : prefs.repeat === "ayah"
-                      ? "segment"
-                      : "off",
-              })
-            }
-            aria-label={t("player.repeat")}
-            className={[
-              "flex h-10 w-10 items-center justify-center rounded-full transition active:scale-90",
-              prefs.repeat === "off"
-                ? "text-white/60 hover:bg-white/10"
-                : "tone-bg-soft tone-text",
-            ].join(" ")}
-          >
-            <Icon name="back10" size={17} />
-          </button>
-
-          <span className="text-xs tabular-nums text-white/60">
-            {formatClock(player.elapsed)}
-          </span>
-
-          {/* Bitta silliq progress chizig'i */}
-          <button
-            type="button"
-            aria-label="seek"
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              player.seekTo((e.clientX - r.left) / r.width);
-            }}
-            className="group relative h-4 min-w-[160px] flex-1"
-          >
-            <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/15" />
-            <span
-              className="tone-bg absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full"
-              style={{ width: `${Math.min(100, clipProgress * 100)}%` }}
-            />
-            <span
-              className="tone-bg absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-              style={{ left: `${Math.min(100, clipProgress * 100)}%` }}
-            />
-          </button>
-
-          <span className="text-xs tabular-nums text-white/60">
-            −{formatClock(remaining)}
-          </span>
-
-          <label className="flex items-center gap-2">
-            <Icon name="headphones" size={16} className="text-white/55" />
-            <span className="sr-only">{t("majlis.volume")}</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={Math.round(player.volume * 100)}
-              onChange={(e) => player.setVolume(Number(e.target.value) / 100)}
-              className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-white/20 accent-[color:var(--sk-accent)]"
-            />
-          </label>
         </div>
       </div>
+
+      <SettingsRail
+        extra={[
+          { icon: "quran", label: t("player.surahs"), onClick: onOpenSurahs },
+        ]}
+      />
     </div>
   );
 }
 
-function Row({
+function RoundButton({
   icon,
   label,
-  value,
   onClick,
 }: {
-  icon: "back10" | "sun" | "share";
+  icon: IconName;
   label: string;
-  value?: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-white/[0.07] active:scale-[0.98]"
+      aria-label={label}
+      className="flex h-10 w-10 items-center justify-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white active:scale-90"
     >
-      <Icon name={icon} size={16} className="shrink-0 text-white/55" />
-      <span className="min-w-0 flex-1 truncate text-sm text-white/85">
-        {label}
-      </span>
-      {value && (
-        <span className="shrink-0 text-xs text-white/45">{value}</span>
-      )}
+      <Icon name={icon} size={18} />
+    </button>
+  );
+}
+
+function Pill({
+  children,
+  onClick,
+  label,
+  active = false,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={[
+        "h-9 rounded-full px-3 text-xs font-semibold transition active:scale-95",
+        active
+          ? "tone-bg-soft tone-text"
+          : "bg-white/10 text-white/65 hover:bg-white/20",
+      ].join(" ")}
+    >
+      {children}
     </button>
   );
 }

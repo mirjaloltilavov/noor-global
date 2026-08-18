@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { MiniPlayer } from "@/components/player/MiniPlayer";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { useApp } from "@/components/providers/AppProvider";
 import { Icon } from "@/components/ui/Icon";
@@ -17,6 +18,9 @@ export function AuraWidget() {
   const player = usePlayer();
 
   if (!player.active || !player.minimized) return null;
+
+  // Pleyer rejimida — mini pleyer, Sakinahda — aura vidjeti
+  if (player.mode === "player") return <MiniPlayer />;
 
   const tone = TONES[prefs.background];
   const surah = player.segment?.surah;

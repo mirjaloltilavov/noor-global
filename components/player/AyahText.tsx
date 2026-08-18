@@ -2,6 +2,7 @@
 
 import { useApp } from "@/components/providers/AppProvider";
 import type { Ayah } from "@/lib/quran";
+import { WORD_SIZES } from "@/lib/session";
 
 /**
  * Oyat matni: karaoke (o'qilayotgan so'z yorqinlashadi) va ixtiyoriy
@@ -25,6 +26,7 @@ export function AyahText({
     active && prefs.karaoke && ayah.words.length > 0 && ayah.segments.length > 0;
   const wbw = active && prefs.wordByWord && ayah.words.length > 0;
 
+  const glossPx = WORD_SIZES[Math.min(prefs.wordSize, WORD_SIZES.length) - 1];
   const size = active ? fontPx : Math.round(fontPx * 0.72);
   const style = {
     fontSize: `clamp(${Math.round(size * 0.55)}px, 6vw, ${size}px)`,
@@ -42,7 +44,9 @@ export function AyahText({
 
   return (
     <p
-      className="arabic flex flex-wrap justify-center gap-x-1 font-arabic text-white"
+      className={`arabic flex flex-wrap justify-center font-arabic text-white ${
+        wbw ? "gap-x-4 gap-y-2" : "gap-x-1"
+      }`}
       style={style}
       dir="rtl"
     >
@@ -68,15 +72,16 @@ export function AyahText({
             {/* Ma'no qatori — chiziqlar sakramasligi uchun joyi doim band */}
             {wbw && (
               <span
-                className="flex h-8 flex-col items-center justify-start leading-tight"
+                className="flex flex-col items-center justify-start font-sans leading-snug"
                 dir="ltr"
+                style={{ minHeight: glossPx * 2.6, fontSize: glossPx }}
               >
                 {now && (
                   <>
-                    <span className="tone-text text-[11px] font-medium">
+                    <span className="tone-text whitespace-nowrap font-medium italic">
                       {w.latin}
                     </span>
-                    <span className="text-[11px] text-white/55">
+                    <span className="max-w-[16ch] text-center text-white/70">
                       {w.meaning}
                     </span>
                   </>

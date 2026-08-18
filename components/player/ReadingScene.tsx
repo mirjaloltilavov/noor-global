@@ -1,29 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useApp } from "@/components/providers/AppProvider";
 import { AyahText } from "@/components/player/AyahText";
 import { usePlayer } from "@/components/player/PlayerProvider";
-import { QueueModal } from "@/components/player/QueueModal";
-import { SurahModal } from "@/components/player/SurahModal";
+import { SettingsRail } from "@/components/player/SettingsRail";
 import { VibeChip } from "@/components/player/VibeChip";
-import { Popover, Slider, Toggle } from "@/components/sakinah/Popover";
-import { Stage, StageThumb } from "@/components/sakinah/Stage";
+import { useApp } from "@/components/providers/AppProvider";
+import { Stage } from "@/components/sakinah/Stage";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { BISMILLAH_TEXT, totalMinutes } from "@/lib/queue";
-import {
-  BACKGROUNDS,
-  RECITERS,
-  SCRIPTS,
-  SURAHS,
-  TRANSLATIONS,
-  getMood,
-  translationName,
-} from "@/lib/sakinah";
+import { SURAHS, getMood } from "@/lib/sakinah";
 import { ARABIC_SIZES } from "@/lib/session";
-
-type Rail = "type" | "translation" | "background" | "audio" | null;
-type ModalKind = "surahs" | "queue" | null;
 
 const IDLE_MS = 4000;
 
@@ -38,19 +25,16 @@ export function ReadingScene({
   /** FullScreen ichida — o'z sarlavhasi va foni chizilmaydi */
   embedded?: boolean;
 }) {
-  const { t, ln, locale, prefs, setPrefs, translationId, vibe, setVibe } =
-    useApp();
+  const { t, ln, prefs, vibe, setVibe, isSaved, toggleSaved } = useApp();
   const player = usePlayer();
 
-  const [rail, setRail] = useState<Rail>(null);
-  const [modal, setModal] = useState<ModalKind>(null);
   const [controls, setControls] = useState(true);
   const [showTip, setShowTip] = useState(false);
 
   const { segment, track, cursor, segments, segIndex, ayah, loading, error } =
     player;
 
-  /* ——— Boshqaruv harakatsizlikda yashirinadi ——— */
+  /* Boshqaruv harakatsizlikda yashirinadi */
   const wake = useCallback(() => setControls(true), []);
 
   useEffect(() => {
@@ -70,11 +54,7 @@ export function ReadingScene({
     };
   }, [wake]);
 
-  useEffect(() => {
-    if (rail || modal) setControls(true);
-  }, [rail, modal]);
-
-  /* ——— Parchaning fazilati (S9) ——— */
+  /* Parchaning fazilati (S9) */
   useEffect(() => {
     setShowTip(false);
     const id = window.setTimeout(() => setShowTip(true), 3500);
@@ -84,12 +64,7 @@ export function ReadingScene({
   const showTranslation = prefs.showTranslation && prefs.format === "both";
   const showTransliteration =
     prefs.showTransliteration && prefs.format === "both";
-
   const fontPx = ARABIC_SIZES[Math.min(prefs.fontSize, ARABIC_SIZES.length) - 1];
-  const arabicStyle = {
-    fontSize: `clamp(${Math.round(fontPx * 0.55)}px, 7vw, ${fontPx}px)`,
-    lineHeight: prefs.lineHeight,
-  };
 
   const surahName = segment
     ? SURAHS[segment.surah]?.slug ??
@@ -105,13 +80,7 @@ export function ReadingScene({
       : 0;
 
   const fade = controls ? "opacity-100" : "pointer-events-none opacity-0";
-
-  // Karaoke faqat so'z va vaqt belgilari bo'lganda ishlaydi
-  const karaokeReady =
-    prefs.karaoke &&
-    !cursor.bismillah &&
-    (ayah?.words.length ?? 0) > 0 &&
-    (ayah?.segments.length ?? 0) > 0;
+  const saved = track ? isSaved(track.surah, track.ayah) : false;
 
   return (
     <Stage
@@ -120,46 +89,40 @@ export function ReadingScene({
       reduceMotion={prefs.reduceMotion}
       bare={embedded}
     >
-      <div className={embedded ? "flex min-h-0 flex-1 flex-col" : "flex h-screen flex-col"}>
-        {/* Yuqori qator */}
-        {!embedded && <header
-          className={`flex items-center justify-between gap-3 px-4 py-5 transition-opacity duration-500 sm:px-8 sm:py-6 ${fade}`}
-        >
-          <button
-            type="button"
-            onClick={onExit}
-            className="flex h-10 items-center gap-2 rounded-full bg-white/10 px-4 text-sm text-white/85 transition hover:bg-white/20 active:scale-95"
+      <div
+        className={
+          embedded ? "flex min-h-0 flex-1 flex-col" : "flex h-screen flex-col"
+        }
+      >
+        {!embedded && (
+          <header
+            className={`flex items-center justify-between gap-3 px-4 py-5 transition-opacity duration-500 sm:px-8 sm:py-6 ${fade}`}
           >
-            <Icon name="arrowLeft" size={16} />
-            <span className="hidden sm:inline">{t("nav.sakinah")}</span>
-          </button>
+            <button
+              type="button"
+              onClick={onExit}
+              className="flex h-10 items-center gap-2 rounded-full bg-white/10 px-4 text-sm text-white/85 transition hover:bg-white/20 active:scale-95"
+            >
+              <Icon name="arrowLeft" size={16} />
+              <span className="hidden sm:inline">{t("nav.sakinah")}</span>
+            </button>
 
-          <p className="truncate text-sm text-white/60">
-            {cursor.bismillah
-              ? "Bismillah"
-              : track && `${surahName} ${track.surah}:${track.ayah}`}
-          </p>
+            <p className="truncate text-sm text-white/60">
+              {cursor.bismillah
+                ? "Bismillah"
+                : track && `${surahName} ${track.surah}:${track.ayah}`}
+            </p>
 
-          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => player.setMinimized(true)}
               aria-label={t("player.minimize")}
-              title={t("player.minimize")}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20 active:scale-95"
             >
               <Icon name="minimize" size={18} />
             </button>
-            <button
-              type="button"
-              onClick={onExit}
-              aria-label={t("common.close")}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20 active:scale-95"
-            >
-              <Icon name="close" size={18} />
-            </button>
-          </div>
-        </header>}
+          </header>
+        )}
 
         {/* Fazilat maslahati */}
         <div
@@ -186,7 +149,13 @@ export function ReadingScene({
             )}
 
             {cursor.bismillah && (
-              <p className="arabic font-arabic text-white" style={arabicStyle}>
+              <p
+                className="arabic font-arabic text-white"
+                style={{
+                  fontSize: `clamp(${Math.round(fontPx * 0.55)}px, 7vw, ${fontPx}px)`,
+                  lineHeight: prefs.lineHeight,
+                }}
+              >
                 {BISMILLAH_TEXT}
               </p>
             )}
@@ -201,12 +170,12 @@ export function ReadingScene({
                 />
 
                 {showTransliteration && ayah.transliteration && (
-                  <p className="mt-6 text-sm italic text-white/45">
+                  <p className="mx-auto mt-6 max-w-3xl text-center text-sm italic text-white/45">
                     {ayah.transliteration}
                   </p>
                 )}
                 {showTranslation && ayah.translation && (
-                  <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/70">
+                  <p className="mx-auto mt-8 max-w-2xl text-center text-lg leading-relaxed text-white/70">
                     {ayah.translation}
                   </p>
                 )}
@@ -215,310 +184,7 @@ export function ReadingScene({
           </div>
         </main>
 
-        {/* Ikonka ustuni */}
-        <div
-          className={`fixed bottom-36 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-500 md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:translate-x-0 md:-translate-y-1/2 ${fade}`}
-        >
-          <div className="flex flex-row items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.08] p-1.5 backdrop-blur-md md:flex-col">
-            <RailButton
-              icon="type"
-              label={t("read.typography")}
-              active={rail === "type"}
-              onClick={() => setRail(rail === "type" ? null : "type")}
-            />
-            <RailButton
-              icon="translate"
-              label={t("read.translation")}
-              active={rail === "translation"}
-              onClick={() =>
-                setRail(rail === "translation" ? null : "translation")
-              }
-            />
-            <RailButton
-              icon="image"
-              label={t("read.background")}
-              active={rail === "background"}
-              onClick={() =>
-                setRail(rail === "background" ? null : "background")
-              }
-            />
-            <RailButton
-              icon="headphones"
-              label={t("read.audio")}
-              active={rail === "audio"}
-              onClick={() => setRail(rail === "audio" ? null : "audio")}
-            />
-
-            <span className="mx-1 h-6 w-px bg-white/10 md:mx-0 md:my-1 md:h-px md:w-6" />
-
-            <RailButton
-              icon="quran"
-              label={t("player.surahs")}
-              active={modal === "surahs"}
-              onClick={() => setModal("surahs")}
-            />
-            <RailButton
-              icon="list"
-              label={t("player.queue")}
-              active={modal === "queue"}
-              onClick={() => setModal("queue")}
-            />
-          </div>
-        </div>
-
-        {/* Popoverlar */}
-        {rail && (
-          <div className="anim-pop fixed inset-x-4 bottom-52 z-30 md:inset-x-auto md:bottom-auto md:right-24 md:top-1/2 md:-translate-y-1/2">
-            {rail === "type" && (
-              <Popover title={t("read.typography")} onClose={() => setRail(null)}>
-                <p className="text-xs text-white/50">{t("read.script")}</p>
-                <div className="mt-2 flex gap-2">
-                  {SCRIPTS.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setPrefs({ script: s.id })}
-                      aria-pressed={prefs.script === s.id}
-                      className={[
-                        "h-9 flex-1 rounded-lg text-sm transition",
-                        prefs.script === s.id
-                          ? "bg-white font-semibold text-night-base"
-                          : "bg-white/10 text-white/70 hover:bg-white/20",
-                      ].join(" ")}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-5 flex items-center justify-between">
-                  <span className="text-xs text-white/50">
-                    {t("read.fontSize")}
-                  </span>
-                  <Stepper
-                    value={prefs.fontSize}
-                    min={1}
-                    max={ARABIC_SIZES.length}
-                    onChange={(v) => setPrefs({ fontSize: v })}
-                  />
-                </div>
-
-                <LabeledSlider
-                  label={t("read.lineHeight")}
-                  display={prefs.lineHeight.toFixed(1)}
-                  value={prefs.lineHeight}
-                  min={1.6}
-                  max={2.6}
-                  step={0.1}
-                  onChange={(v) => setPrefs({ lineHeight: v })}
-                />
-
-                <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
-                  <span>
-                    <span className="flex items-center gap-2 text-sm text-white/80">
-                      <Icon name="waveform" size={15} />
-                      {t("read.karaoke")}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-white/45">
-                      {t("read.karaokeHint")}
-                    </span>
-                  </span>
-                  <Toggle
-                    label={t("read.karaoke")}
-                    checked={prefs.karaoke}
-                    onChange={(v) => setPrefs({ karaoke: v })}
-                  />
-                </div>
-              </Popover>
-            )}
-
-            {rail === "translation" && (
-              <Popover
-                title={t("read.translation")}
-                onClose={() => setRail(null)}
-              >
-                <ul className="space-y-1">
-                  {TRANSLATIONS[locale].map((tr) => (
-                    <li key={tr.id}>
-                      <button
-                        type="button"
-                        onClick={() => setPrefs({ translation: tr.id })}
-                        aria-pressed={translationId === tr.id}
-                        className={[
-                          "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition",
-                          translationId === tr.id
-                            ? "tone-bg-soft text-white"
-                            : "text-white/70 hover:bg-white/10",
-                        ].join(" ")}
-                      >
-                        <span className="min-w-0 truncate">{tr.name}</span>
-                        {translationId === tr.id && (
-                          <Icon name="check" size={15} className="tone-text" />
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-
-                <label className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-3">
-                  <span className="text-sm text-white/80">
-                    {t("read.showTranslation")}
-                  </span>
-                  <Toggle
-                    label={t("read.showTranslation")}
-                    checked={prefs.showTranslation}
-                    onChange={(v) => setPrefs({ showTranslation: v })}
-                  />
-                </label>
-                <label className="mt-2 flex items-center justify-between gap-4">
-                  <span className="text-sm text-white/80">
-                    {t("read.showTransliteration")}
-                  </span>
-                  <Toggle
-                    label={t("read.showTransliteration")}
-                    checked={prefs.showTransliteration}
-                    onChange={(v) => setPrefs({ showTransliteration: v })}
-                  />
-                </label>
-                <label className="mt-3 flex items-center justify-between gap-4 border-t border-white/10 pt-3">
-                  <span>
-                    <span className="block text-sm text-white/80">
-                      {t("read.wordByWord")}
-                    </span>
-                    <span className="block text-[11px] text-white/45">
-                      {t("read.wordByWordHint")}
-                    </span>
-                  </span>
-                  <Toggle
-                    label={t("read.wordByWord")}
-                    checked={prefs.wordByWord}
-                    onChange={(v) => setPrefs({ wordByWord: v })}
-                  />
-                </label>
-              </Popover>
-            )}
-
-            {rail === "background" && (
-              <Popover title={t("read.background")} onClose={() => setRail(null)}>
-                <div className="grid grid-cols-2 gap-3">
-                  {BACKGROUNDS.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => setPrefs({ background: b.id })}
-                      aria-pressed={prefs.background === b.id}
-                      className={[
-                        "rounded-xl border p-1 text-left transition",
-                        prefs.background === b.id
-                          ? "tone-border"
-                          : "border-white/10 hover:border-white/30",
-                      ].join(" ")}
-                    >
-                      <StageThumb background={b.id} />
-                      <span className="mt-1.5 block px-1 text-xs font-semibold text-white">
-                        {b.label}
-                      </span>
-                      <span className="block px-1 pb-1 text-[11px] text-white/45">
-                        {ln(b.sub)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                <p className="mt-4 text-[11px] leading-relaxed text-white/45">
-                  {t("read.bgHint")}
-                </p>
-
-                <LabeledSlider
-                  label={t("read.brightness")}
-                  display={`${prefs.brightness}%`}
-                  value={prefs.brightness}
-                  min={30}
-                  max={100}
-                  onChange={(v) => setPrefs({ brightness: v })}
-                />
-
-                <div className="mt-4 flex items-center justify-between gap-4">
-                  <span>
-                    <span className="block text-sm text-white/80">
-                      {t("read.reduceMotion")}
-                    </span>
-                    <span className="block text-[11px] text-white/45">
-                      {t("read.reduceMotionHint")}
-                    </span>
-                  </span>
-                  <Toggle
-                    label={t("read.reduceMotion")}
-                    checked={prefs.reduceMotion}
-                    onChange={(v) => setPrefs({ reduceMotion: v })}
-                  />
-                </div>
-              </Popover>
-            )}
-
-            {rail === "audio" && (
-              <Popover title={t("read.audio")} onClose={() => setRail(null)}>
-                <ul className="space-y-1">
-                  {RECITERS.map((r) => (
-                    <li key={r.id}>
-                      <button
-                        type="button"
-                        onClick={() => setPrefs({ reciter: r.id })}
-                        aria-pressed={prefs.reciter === r.id}
-                        className={[
-                          "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition",
-                          prefs.reciter === r.id
-                            ? "tone-bg-soft"
-                            : "hover:bg-white/10",
-                        ].join(" ")}
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm text-white">
-                            {r.name}
-                          </span>
-                          <span className="block truncate text-[11px] text-white/45">
-                            {ln(r.style)} · {ln(r.place)}
-                          </span>
-                        </span>
-                        {prefs.reciter === r.id && (
-                          <Icon name="check" size={16} className="tone-text" />
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-4 border-t border-white/10 pt-3">
-                  <p className="text-xs text-white/50">{t("player.speed")}</p>
-                  <div className="mt-2 flex gap-2">
-                    {[0.75, 1, 1.25, 1.5].map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setPrefs({ rate: r })}
-                        aria-pressed={prefs.rate === r}
-                        className={[
-                          "h-8 flex-1 rounded-lg text-xs font-semibold transition",
-                          prefs.rate === r
-                            ? "bg-white text-night-base"
-                            : "bg-white/10 text-white/70 hover:bg-white/20",
-                        ].join(" ")}
-                      >
-                        {r}x
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <p className="mt-3 text-[11px] text-white/40">
-                  {translationName(locale, translationId)}
-                </p>
-              </Popover>
-            )}
-          </div>
-        )}
-
-        {/* Pastdagi boshqaruv */}
+        {/* Pastdagi suzuvchi boshqaruv */}
         <footer
           className={`px-4 pb-6 transition-opacity duration-500 sm:px-8 sm:pb-8 ${fade}`}
         >
@@ -552,6 +218,23 @@ export function ReadingScene({
                 label="next"
                 onClick={player.next}
               />
+
+              {track && (
+                <button
+                  type="button"
+                  onClick={() => toggleSaved(track.surah, track.ayah)}
+                  aria-label={saved ? t("saved.remove") : t("saved.add")}
+                  title={saved ? t("saved.remove") : t("saved.add")}
+                  className={[
+                    "flex h-10 w-10 items-center justify-center rounded-full transition active:scale-90",
+                    saved
+                      ? "tone-bg-soft tone-text"
+                      : "text-white/70 hover:bg-white/15",
+                  ].join(" ")}
+                >
+                  <Icon name="bookmark" size={17} filled={saved} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -574,21 +257,11 @@ export function ReadingScene({
               total={segments.filter((s) => s.kind === "vibe").length}
               onRetune={onRetune}
               onRestart={() => player.startVibe(vibe.mood)}
-              onExit={() => {
-                setVibe(null);
-                const surah = segment?.surah ?? 1;
-                player.startSurah(
-                  surah,
-                  SURAHS[surah]?.verses ??
-                    player.chapters.find((c) => c.id === surah)?.verses ??
-                    7
-                );
-              }}
+              onExit={() => setVibe(null)}
             />
           </div>
         )}
 
-        {/* Progress */}
         <div className="fixed inset-x-0 bottom-0 h-1 bg-white/10">
           <div
             className="tone-bg h-full transition-[width] duration-300"
@@ -597,8 +270,7 @@ export function ReadingScene({
         </div>
       </div>
 
-      {modal === "surahs" && <SurahModal onClose={() => setModal(null)} />}
-      {modal === "queue" && <QueueModal onClose={() => setModal(null)} />}
+      <SettingsRail visible={controls} />
 
       {player.finished && vibe && (
         <FinishPrompt
@@ -611,8 +283,6 @@ export function ReadingScene({
     </Stage>
   );
 }
-
-/* ——————————————————————————————————————————————————————— */
 
 function FinishPrompt({
   moodLabel,
@@ -666,34 +336,6 @@ function FinishPrompt({
   );
 }
 
-function RailButton({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: IconName;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      aria-pressed={active}
-      className={[
-        "flex h-10 w-10 items-center justify-center rounded-xl transition active:scale-90",
-        active ? "tone-bg text-night-base" : "text-white/80 hover:bg-white/15",
-      ].join(" ")}
-    >
-      <Icon name={icon} size={18} />
-    </button>
-  );
-}
-
 function CircleButton({
   icon,
   label,
@@ -712,76 +354,5 @@ function CircleButton({
     >
       <Icon name={icon} size={18} />
     </button>
-  );
-}
-
-function Stepper({
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <span className="flex items-center gap-3 rounded-full bg-white/10 px-2 py-1">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(min, value - 1))}
-        aria-label="−"
-        className="flex h-6 w-6 items-center justify-center rounded-full text-white/70 transition hover:bg-white/15"
-      >
-        −
-      </button>
-      <span className="w-4 text-center text-sm text-white">{value}</span>
-      <button
-        type="button"
-        onClick={() => onChange(Math.min(max, value + 1))}
-        aria-label="+"
-        className="flex h-6 w-6 items-center justify-center rounded-full text-white/70 transition hover:bg-white/15"
-      >
-        +
-      </button>
-    </span>
-  );
-}
-
-function LabeledSlider({
-  label,
-  display,
-  value,
-  min,
-  max,
-  step = 1,
-  onChange,
-}: {
-  label: string;
-  display: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-white/50">{label}</span>
-        <span className="text-xs text-white/70">{display}</span>
-      </div>
-      <div className="mt-2">
-        <Slider
-          label={label}
-          value={value}
-          min={min}
-          max={max}
-          step={step}
-          onChange={onChange}
-        />
-      </div>
-    </div>
   );
 }

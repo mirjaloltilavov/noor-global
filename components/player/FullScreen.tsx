@@ -3,27 +3,28 @@
 import { useState } from "react";
 import { MajlisView } from "@/components/player/MajlisView";
 import { usePlayer } from "@/components/player/PlayerProvider";
-import { QueueModal } from "@/components/player/QueueModal";
 import { ReadingScene } from "@/components/player/ReadingScene";
-import { SettingsModal } from "@/components/player/SettingsModal";
-import { SurahModal } from "@/components/player/SurahModal";
+import { SurahPicker } from "@/components/player/SurahPicker";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon } from "@/components/ui/Icon";
-import { SURAHS, getMood } from "@/lib/sakinah";
+import { getMood } from "@/lib/sakinah";
 
-type Tab = "player" | "sakinah";
-type ModalKind = "surahs" | "queue" | "settings" | null;
+type Tab = "sakinah" | "player";
 
 /**
- * Full-screen pleyer. Tepadagi tab orqali «Pleyer» (Majlis ko'rinishi) va
- * «Sakinah» (kayfiyat sessiyasi) o'rtasida almashadi.
+ * Full-screen ijro ekrani. Tepadagi tab: «Sakinah» (kayfiyat sessiyasi)
+ * va «Player» (Qur'on pleyeri). Ikkalasi mustaqil.
  */
-export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void }) {
+export function FullScreen({
+  onOpenOnboarding,
+}: {
+  onOpenOnboarding: () => void;
+}) {
   const { t, prefs, vibe } = useApp();
   const player = usePlayer();
 
-  const [modal, setModal] = useState<ModalKind>(null);
+  const [picking, setPicking] = useState(false);
   const tab: Tab = player.mode;
 
   return (
@@ -33,7 +34,6 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
       reduceMotion={prefs.reduceMotion}
     >
       <div className="flex h-screen flex-col">
-        {/* Yuqori qator */}
         <header className="flex shrink-0 items-center gap-3 px-4 py-4 sm:px-6">
           <button
             type="button"
@@ -45,13 +45,15 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
             <Icon name="chevronDown" size={18} />
           </button>
 
-          {/* Tab almashtirgich */}
           <div className="mx-auto flex items-center rounded-full border border-white/10 bg-white/[0.06] p-1 backdrop-blur">
-            {(["player", "sakinah"] as Tab[]).map((x) => (
+            {(["sakinah", "player"] as Tab[]).map((x) => (
               <button
                 key={x}
                 type="button"
-                onClick={() => player.setMode(x)}
+                onClick={() => {
+                  player.setMode(x);
+                  setPicking(false);
+                }}
                 aria-pressed={tab === x}
                 className={[
                   "h-9 rounded-full px-5 text-sm transition",
@@ -65,36 +67,16 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
             ))}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {tab === "player" && (
-              <>
-            <HeaderButton
-              icon="quran"
-              label={t("player.surahs")}
-              onClick={() => setModal("surahs")}
-            />
-            <HeaderButton
-              icon="list"
-              label={t("player.queue")}
-              onClick={() => setModal("queue")}
-            />
-            <HeaderButton
-              icon="settings"
-              label={t("player.settings")}
-              onClick={() => setModal("settings")}
-            />
-              </>
-            )}
-          </div>
+          {/* Muvozanat uchun — o'ngdagi sozlamalar ustunda */}
+          <span className="h-10 w-10 shrink-0" aria-hidden="true" />
         </header>
 
-        {/* Tanasi */}
         <div key={tab} className="anim-fade-in flex min-h-0 flex-1 flex-col">
           {tab === "player" ? (
-            player.active ? (
-              <MajlisView onEditSession={onOpenOnboarding} />
+            picking || !player.active ? (
+              <SurahPicker onPicked={() => setPicking(false)} />
             ) : (
-              <EmptyPlayer onPickSurah={() => setModal("surahs")} />
+              <MajlisView onOpenSurahs={() => setPicking(true)} />
             )
           ) : player.active && vibe ? (
             <ReadingScene embedded onRetune={onOpenOnboarding} />
@@ -103,67 +85,7 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
           )}
         </div>
       </div>
-
-      {modal === "surahs" && <SurahModal onClose={() => setModal(null)} />}
-      {modal === "queue" && <QueueModal onClose={() => setModal(null)} />}
-      {modal === "settings" && <SettingsModal onClose={() => setModal(null)} />}
     </Stage>
-  );
-}
-
-function HeaderButton({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: "quran" | "list" | "settings";
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/80 transition hover:bg-white/15 active:scale-90"
-    >
-      <Icon name={icon} size={18} />
-    </button>
-  );
-}
-
-function EmptyPlayer({ onPickSurah }: { onPickSurah: () => void }) {
-  const { t } = useApp();
-  const player = usePlayer();
-
-  return (
-    <div className="anim-fade-up flex flex-1 flex-col items-center justify-center px-6 text-center">
-      <span className="tone-bg-soft flex h-20 w-20 items-center justify-center rounded-full">
-        <Icon name="play" size={26} className="tone-text" filled />
-      </span>
-      <p className="mt-6 text-lg text-white/80">{t("player.empty")}</p>
-
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={onPickSurah}
-          className="tone-bg h-11 rounded-full px-7 text-sm font-semibold text-night-base transition hover:brightness-110 active:scale-95"
-        >
-          {t("player.chooseSurah")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            player.startSurah(1, SURAHS[1].verses);
-            player.play();
-          }}
-          className="h-11 rounded-full bg-white/10 px-7 text-sm font-medium text-white transition hover:bg-white/20 active:scale-95"
-        >
-          Al-Fatihah
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -223,7 +145,6 @@ function SakinahStart({ onBegin }: { onBegin: () => void }) {
       <p className="mt-10 max-w-xl text-[11px] leading-relaxed text-white/30">
         {t("entry.disclaimer")}
       </p>
-
     </div>
   );
 }

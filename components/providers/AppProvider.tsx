@@ -14,12 +14,15 @@ import {
   DEFAULT_PREFS,
   loadHistory,
   loadPrefs,
+  loadSaved,
+  saveSaved,
   loadVibe,
   saveHistory,
   savePrefs,
   saveVibe,
   type PastSession,
   type Prefs,
+  type SavedAyah,
   type VibeSession,
 } from "@/lib/session";
 
@@ -36,6 +39,10 @@ interface AppValue {
   translationId: number;
   vibe: VibeSession | null;
   setVibe: (s: VibeSession | null) => void;
+  /** Saqlangan oyatlar — pleyer va Sakinah uchun umumiy */
+  saved: SavedAyah[];
+  toggleSaved: (surah: number, ayah: number) => void;
+  isSaved: (surah: number, ayah: number) => boolean;
   history: PastSession[];
   pushHistory: (s: PastSession) => void;
   updateHistory: (id: string, patch: Partial<PastSession>) => void;
@@ -48,6 +55,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefsState] = useState<Prefs>(DEFAULT_PREFS);
   const [vibe, setVibeState] = useState<VibeSession | null>(null);
   const [history, setHistory] = useState<PastSession[]>([]);
+  const [saved, setSaved] = useState<SavedAyah[]>([]);
 
   // localStorage faqat brauzerda — birinchi renderdan keyin o'qiymiz,
   // shunda server va mijoz HTML'i mos keladi.
@@ -55,6 +63,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPrefsState(loadPrefs());
     setVibeState(loadVibe());
     setHistory(loadHistory());
+    setSaved(loadSaved());
     setReady(true);
   }, []);
 
@@ -74,6 +83,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setVibe = useCallback((s: VibeSession | null) => {
     setVibeState(s);
     saveVibe(s);
+  }, []);
+
+  const toggleSaved = useCallback((surah: number, ayah: number) => {
+    setSaved((prev) => {
+      const exists = prev.some((x) => x.surah === surah && x.ayah === ayah);
+      const next = exists
+        ? prev.filter((x) => !(x.surah === surah && x.ayah === ayah))
+        : [{ surah, ayah, at: Date.now() }, ...prev];
+      saveSaved(next);
+      return next;
+    });
   }, []);
 
   const pushHistory = useCallback((s: PastSession) => {
@@ -107,6 +127,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       translationId: resolveTranslation(prefs.locale, prefs.translation),
       vibe,
       setVibe,
+      saved,
+      toggleSaved,
+      isSaved: (surah, ayah) =>
+        saved.some((x) => x.surah === surah && x.ayah === ayah),
       history,
       pushHistory,
       updateHistory,
@@ -118,6 +142,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLocale,
       vibe,
       setVibe,
+      saved,
+      toggleSaved,
       history,
       pushHistory,
       updateHistory,
