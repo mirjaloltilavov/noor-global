@@ -41,7 +41,7 @@ export function SurahPicker({ onPicked }: { onPicked?: () => void }) {
 
   return (
     <div className="sk-scroll anim-fade-up min-h-0 flex-1 overflow-y-auto px-4 pb-8 sm:px-8">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto flex min-h-full max-w-4xl flex-col justify-center">
         <h2 className="pt-2 text-center text-2xl font-semibold tracking-tightest text-white sm:text-3xl">
           {t("player.pickTitle")}
         </h2>

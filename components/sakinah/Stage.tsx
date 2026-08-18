@@ -79,7 +79,8 @@ export function Stage({
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
       </div>
 
-      <div className="relative z-10">{children}</div>
+      {/* Kontent butun balandlikni egallaydi — ichkarida markazlash ishlashi uchun */}
+      <div className="relative z-10 flex h-full flex-col">{children}</div>
     </div>
   );
 }

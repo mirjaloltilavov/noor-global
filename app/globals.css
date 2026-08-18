@@ -422,10 +422,12 @@ body {
   transition:
     opacity 220ms ease,
     text-shadow 220ms ease;
-  opacity: 0.38;
+  /* Hali o'qilmagan so'zlar biroz xira */
+  opacity: 0.45;
 }
+/* O'qib bo'lingan so'z xiralashmaydi */
 .kw-done {
-  opacity: 0.62;
+  opacity: 1;
 }
 .kw-now {
   opacity: 1;

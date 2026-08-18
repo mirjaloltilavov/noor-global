@@ -142,9 +142,10 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
 
           {(ayahs ?? []).map((a) => {
             const active = a.ayah === track.ayah && !cursor.bismillah;
-            const distance = Math.abs(a.ayah - track.ayah);
-            // Faqat oldingi va keyingi bittasi ko'rinadi
-            const opacity = active ? 1 : distance === 1 ? 0.3 : 0;
+            const distance = a.ayah - track.ayah;
+            // Oldingi (o'qilgan) — xiralashmaydi, keyingisi — biroz xira
+            const opacity =
+              active || distance === -1 ? 1 : distance === 1 ? 0.4 : 0;
 
             return (
               <div
