@@ -6,20 +6,23 @@ export type L10n = Record<Locale, string>;
    Suralar (faqat Sakinah tanlovida ishlatilganlari)
 ———————————————————————————————————————————————————————————— */
 
-export const SURAHS: Record<number, { slug: string; arabic: string }> = {
-  1: { slug: "Al-Fatihah", arabic: "الفاتحة" },
-  2: { slug: "Al-Baqarah", arabic: "البقرة" },
-  3: { slug: "Ali 'Imran", arabic: "آل عمران" },
-  9: { slug: "At-Tawbah", arabic: "التوبة" },
-  12: { slug: "Yusuf", arabic: "يوسف" },
-  13: { slug: "Ar-Ra'd", arabic: "الرعد" },
-  14: { slug: "Ibrahim", arabic: "إبراهيم" },
-  18: { slug: "Al-Kahf", arabic: "الكهف" },
-  39: { slug: "Az-Zumar", arabic: "الزمر" },
-  65: { slug: "At-Talaq", arabic: "الطلاق" },
-  66: { slug: "At-Tahrim", arabic: "التحريم" },
-  93: { slug: "Ad-Duha", arabic: "الضحى" },
-  94: { slug: "Ash-Sharh", arabic: "الشرح" },
+export const SURAHS: Record<
+  number,
+  { slug: string; arabic: string; verses: number }
+> = {
+  1: { slug: "Al-Fatihah", arabic: "الفاتحة", verses: 7 },
+  2: { slug: "Al-Baqarah", arabic: "البقرة", verses: 286 },
+  3: { slug: "Ali 'Imran", arabic: "آل عمران", verses: 200 },
+  9: { slug: "At-Tawbah", arabic: "التوبة", verses: 129 },
+  12: { slug: "Yusuf", arabic: "يوسف", verses: 111 },
+  13: { slug: "Ar-Ra'd", arabic: "الرعد", verses: 43 },
+  14: { slug: "Ibrahim", arabic: "إبراهيم", verses: 52 },
+  18: { slug: "Al-Kahf", arabic: "الكهف", verses: 110 },
+  39: { slug: "Az-Zumar", arabic: "الزمر", verses: 75 },
+  65: { slug: "At-Talaq", arabic: "الطلاق", verses: 12 },
+  66: { slug: "At-Tahrim", arabic: "التحريم", verses: 12 },
+  93: { slug: "Ad-Duha", arabic: "الضحى", verses: 11 },
+  94: { slug: "Ash-Sharh", arabic: "الشرح", verses: 8 },
 };
 
 export interface Passage {
@@ -377,17 +380,28 @@ export const INTENTIONS: { id: IntentionId; label: L10n }[] = [
   { id: "strength", label: { uz: "Kuch", ru: "Сила", en: "Strength" } },
 ];
 
-export const DURATIONS = [5, 10, 15, 20] as const;
+/** 0 — «cheksiz»: to'xtatilmaguncha davom etadi */
+export const DURATIONS = [10, 30, 45, 0] as const;
 export type Duration = (typeof DURATIONS)[number];
 
-export type FormatId = "listen" | "read" | "both";
+export const DURATION_LABELS: Record<Duration, L10n> = {
+  10: { uz: "10 daqiqa", ru: "10 минут", en: "10 minutes" },
+  30: { uz: "30 daqiqa", ru: "30 минут", en: "30 minutes" },
+  45: { uz: "45 daqiqa", ru: "45 минут", en: "45 minutes" },
+  0: { uz: "Cheksiz", ru: "Без ограничения", en: "Open-ended" },
+};
+
+export type FormatId = "listen" | "both";
 
 export const FORMATS: { id: FormatId; label: L10n }[] = [
   { id: "listen", label: { uz: "Tinglash", ru: "Слушать", en: "Listen" } },
-  { id: "read", label: { uz: "O'qish", ru: "Читать", en: "Read" } },
   {
     id: "both",
-    label: { uz: "Tinglash + o'qish", ru: "Слушать + читать", en: "Listen + read" },
+    label: {
+      uz: "Tinglash + o'qish",
+      ru: "Слушать + читать",
+      en: "Listen + read",
+    },
   },
 ];
 
@@ -485,17 +499,49 @@ export const SCRIPTS: { id: ScriptId; label: string }[] = [
    Tarjimalar — quran.com API v4 resurs id'lari
 ———————————————————————————————————————————————————————————— */
 
-export const TRANSLATION_IDS: Record<Locale, number> = {
-  uz: 55, // Muhammad Sodiq Muhammad Yusuf (lotin)
-  ru: 45, // Elmir Kuliev
-  en: 20, // Saheeh International
+export interface TranslationOption {
+  id: number;
+  name: string;
+}
+
+/** Har til uchun mavjud tarjimalar — pleyerdan almashtiriladi */
+export const TRANSLATIONS: Record<Locale, TranslationOption[]> = {
+  uz: [
+    { id: 55, name: "Muhammad Sodiq Muhammad Yusuf — lotin" },
+    { id: 127, name: "Муҳаммад Содиқ Муҳаммад Юсуф — кирилл" },
+    { id: 101, name: "Алоуддин Мансур — кирилл" },
+  ],
+  ru: [
+    { id: 45, name: "Эльмир Кулиев" },
+    { id: 79, name: "Абу Адель" },
+    { id: 78, name: "Министерство вакфов, Египет" },
+  ],
+  en: [
+    { id: 20, name: "Saheeh International" },
+    { id: 85, name: "M.A.S. Abdel Haleem" },
+    { id: 84, name: "Mufti Taqi Usmani" },
+    { id: 22, name: "Abdullah Yusuf Ali" },
+  ],
 };
 
-export const TRANSLATOR_NAMES: Record<Locale, string> = {
-  uz: "Muhammad Sodiq Muhammad Yusuf",
-  ru: "Эльмир Кулиев",
-  en: "Saheeh International",
+export const DEFAULT_TRANSLATION: Record<Locale, number> = {
+  uz: 55,
+  ru: 45,
+  en: 20,
 };
+
+export function translationName(locale: Locale, id: number): string {
+  return (
+    TRANSLATIONS[locale].find((t) => t.id === id)?.name ??
+    TRANSLATIONS[locale][0].name
+  );
+}
+
+/** Berilgan id shu tilga tegishli emasmi — shunda tilning standarti olinadi */
+export function resolveTranslation(locale: Locale, id: number | null): number {
+  if (id !== null && TRANSLATIONS[locale].some((t) => t.id === id)) return id;
+  return DEFAULT_TRANSLATION[locale];
+}
 
 /** quran.com'dagi inglizcha transliteratsiya resursi */
 export const TRANSLITERATION_ID = 57;

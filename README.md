@@ -1,37 +1,41 @@
 # Noor Global — Sakinah
 
-Sakinah — Qur'ondan olimlar ko'rib chiqqan **eslatmalar** beruvchi sokin sessiya rejimi.
-Foydalanuvchi qalb holatini tanlaydi, uchta parcha oladi, tilovat bilan o'qiydi va sessiyani yakunlaydi.
+Qur'on pleyeri, ichida **Sakinah** rejimi bilan: foydalanuvchi qalb holatini
+tanlaydi, unga mos parchalardan tanlangan davomiylikka navbat tuziladi va
+tilovat boshlanadi. Sessiya tugagach pleyerdan chiqilmaydi — oddiy pleyerga
+o'tadi, vibe esa burchakda bo'limcha bo'lib qoladi.
 
-Dizayn manbasi: Figma — **Noor Global → WEB** sahifasi (Sakinah v1 to'liq oqimi va v2 Composer
-bitta yaxlit oqimga birlashtirilgan).
+Dastlabki dizayn manbasi: Figma — **Noor Global → WEB** sahifasi.
+Keyingi bosqichda oqim pleyer atrofida qayta yig'ildi.
 
 ## Nima ishlaydi
 
 | Bo'lim | Holat |
 | --- | --- |
-| **Sakinah** | To'liq ishlaydi — quyidagi oqim |
+| **Sakinah / Pleyer** | To'liq ishlaydi — quyidagi oqim |
 | Qur'on, Pleyer, Hadis, AI suhbat, Tafsir, Daftar | «Tez orada» sahifasi |
 
-### Sakinah oqimi
+### Oqim
 
-1. **`/sakinah` — Composer**
-   Hero + `سَكِينَة` kalligrafiyasi, 6 ta kayfiyat kartasi, uchta sozlama chipi
-   (niyat / davomiylik / format), qori tanlash, «Boshlash».
-   Tugallanmagan sessiya bo'lsa — yuqorida «Davom etish» banneri.
-   Pastda — so'nggi sessiyalar (qidiruv bilan).
-2. **`/sakinah/reminder`**
-   Avval «Tayyorlanmoqda» ekrani (kutish paytida duo), so'ng uchta parcha:
-   manba, tarjima parchasi, nega aynan shu parcha — va umumiy vaqt.
-3. **`/sakinah/read`**
-   To'liq ekranli o'qish sahnasi: arabcha matn, tarjima, ixtiyoriy transliteratsiya.
-   O'ng vertikal panel — tipografika / tarjima / fon / yorqinlik / qori.
-   Pastda pleyer, pastki chapda kayfiyatni o'zgartirish chipi.
-   Boshqaruv 4 soniya harakatsizlikdan so'ng yashirinadi.
-4. **`/sakinah/complete`**
-   Parcha tugasa — «Keyingi parcha / To'liq sura / Sozlamalar».
-   Sessiya tugasa — yakuniy oyat, saqlash · qayta o'qish · ulashish · tayyor
-   va «yana shunday eslatma kerakmi?» so'rovi.
+Butun tajriba bitta ekranda — `/sakinah` (pleyer). `/player` ham shu yerga
+yo'naltiradi.
+
+1. **Onboarding** — pleyer ustidagi overlay: kayfiyat (6 ta), davomiylik
+   (10 / 30 / 45 daqiqa yoki cheksiz), format (tinglash yoki tinglash + o'qish),
+   qori. «Kayfiyatsiz, oddiy pleyer» bilan o'tkazib yuborsa ham bo'ladi.
+2. **Navbat** — tanlangan daqiqaga qarab tuziladi: avval kayfiyat bo'yicha
+   kuratsiya qilingan parchalar, vaqt yetmasa o'sha suralarning davomi
+   bo'laklarga bo'linib qo'shiladi. Cheksiz rejimda navbat tugashiga yaqin
+   o'zi uzayadi.
+3. **Pleyer** — arabcha matn, tarjima, transliteratsiya; boshqaruv
+   (⟵ · −10s · play · +10s · ⟶), tezlik, takrorlash (o'chiq / oyat / parcha),
+   oyat ichida seek. Yon panel: **Navbat · Suralar · Sozlamalar**
+   (114 sura + qidiruv, qori, tarjimon, yozuv, o'lcham, fon, yorqinlik).
+4. **Sessiya yakuni** — «davom ettiramizmi?» so'raladi.
+   *Ha* — navbat uzayadi va tilovat davom etadi.
+   *Yo'q* — pleyerdan chiqilmaydi: oddiy rejimga o'tadi, sura ro'yxati ochiladi,
+   vibe sessiyasi esa pastki chap burchakda bo'limcha bo'lib qoladi
+   (qayta sozlash · qaytadan boshlash · chiqish).
 
 ### O'qish fonlari
 
@@ -44,14 +48,16 @@ Yorqinlik slayderi va «Harakatni kamaytirish» tugmasi bor;
 ## Ma'lumot manbalari
 
 - **Matn va tarjima** — [quran.com API v4](https://api-docs.quran.com/), server tomonda
-  `/api/passage` orqali (7 kun kesh).
-  Tarjimalar: `uz` — Muhammad Sodiq Muhammad Yusuf (lotin, id 55),
-  `ru` — Эльмир Кулиев (id 45), `en` — Saheeh International (id 20),
+  `/api/passage` va `/api/chapters` orqali (7 va 30 kun kesh).
+  Har til uchun bir nechta tarjimon bor va pleyerdan almashtiriladi —
+  standartlari: `uz` Muhammad Sodiq Muhammad Yusuf (lotin, id 55),
+  `ru` Эльмир Кулиев (id 45), `en` Saheeh International (id 20);
   transliteratsiya — id 57.
 - **Audio** — [everyayah.com](https://everyayah.com) CDN, oyatma-oyat:
   As-Sudais · Alafasy · Al-Ghamdi · Al-Husary.
 - **Parchalar tanlovi** — `lib/sakinah.ts` ichida qo'lda kuratsiya qilingan
   (kayfiyat → 3 parcha + nega aynan shu parcha izohi, uch tilda).
+  Uzoqroq sessiyalar `lib/queue.ts` da o'sha suralarning davomi bilan to'ldiriladi.
 
 ## Texnologiyalar
 
@@ -72,16 +78,20 @@ http://localhost:3000 — `/sakinah` ga yo'naltiradi.
 
 ```
 app/
-  sakinah/            composer · reminder · read · complete
-  api/passage/        quran.com proxy (kesh bilan)
-  quran|player|...    "tez orada" sahifalari
+  sakinah/            pleyer sahifasi (asosiy ekran)
+  api/passage/        oyat matni + tarjima (kesh bilan)
+  api/chapters/       114 sura ro'yxati
+  quran|hadith|...    'tez orada' sahifalari
 components/
-  shell/              88px nav rail · top bar
-  sakinah/            fon sahnasi · popoverlar
+  player/             PlayerScreen · Onboarding · SidePanel · VibeChip
+  sakinah/            fon sahnasi · popover elementlari
+  shell/              88px nav rail
   ui/                 ikonka · select
 lib/
-  sakinah.ts          kayfiyatlar · parchalar · qorilar · fonlar
+  sakinah.ts          kayfiyatlar · parchalar · qorilar · tarjimalar · fonlar
+  queue.ts            davomiylikka qarab navbat tuzish
   quran.ts            quran.com API
+  useQuran.ts         mijoz tomonda kesh va oldindan yuklash
   i18n.ts             uz / ru / en lug'atlari
   session.ts          localStorage sozlamalari va tarix
 ```

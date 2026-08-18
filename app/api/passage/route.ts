@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { fetchPassage } from "@/lib/quran";
-import { LOCALES, type Locale } from "@/lib/i18n";
 
 export const revalidate = 604800; // 7 kun
 
@@ -16,24 +15,25 @@ export async function GET(request: Request) {
   const surah = num(params.get("surah"));
   const from = num(params.get("from"));
   const to = num(params.get("to"));
-  const locale = (params.get("locale") ?? "en") as Locale;
+  const translation = num(params.get("translation"));
 
   if (
     surah === null ||
     from === null ||
     to === null ||
+    translation === null ||
     surah < 1 ||
     surah > 114 ||
     from < 1 ||
     to < from ||
     to - from > 20 ||
-    !LOCALES.includes(locale)
+    translation < 1
   ) {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 
   try {
-    const ayahs = await fetchPassage(surah, from, to, locale);
+    const ayahs = await fetchPassage(surah, from, to, translation);
     return NextResponse.json({ ayahs });
   } catch {
     return NextResponse.json({ error: "upstream" }, { status: 502 });

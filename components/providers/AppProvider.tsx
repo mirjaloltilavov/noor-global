@@ -9,18 +9,18 @@ import {
   useState,
 } from "react";
 import { translate, type Locale } from "@/lib/i18n";
-import type { L10n } from "@/lib/sakinah";
+import { resolveTranslation, type L10n } from "@/lib/sakinah";
 import {
   DEFAULT_PREFS,
-  loadCurrent,
   loadHistory,
   loadPrefs,
-  saveCurrent,
+  loadVibe,
   saveHistory,
   savePrefs,
-  type CurrentSession,
+  saveVibe,
   type PastSession,
   type Prefs,
+  type VibeSession,
 } from "@/lib/session";
 
 interface AppValue {
@@ -32,8 +32,10 @@ interface AppValue {
   t: (key: string, vars?: Record<string, string | number>) => string;
   /** L10n obyektidan joriy tildagi qatorni oladi */
   ln: (value: L10n) => string;
-  current: CurrentSession | null;
-  setCurrent: (s: CurrentSession | null) => void;
+  /** Joriy tilga mos tarjima resursi id'si */
+  translationId: number;
+  vibe: VibeSession | null;
+  setVibe: (s: VibeSession | null) => void;
   history: PastSession[];
   pushHistory: (s: PastSession) => void;
   updateHistory: (id: string, patch: Partial<PastSession>) => void;
@@ -44,14 +46,14 @@ const Ctx = createContext<AppValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [prefs, setPrefsState] = useState<Prefs>(DEFAULT_PREFS);
-  const [current, setCurrentState] = useState<CurrentSession | null>(null);
+  const [vibe, setVibeState] = useState<VibeSession | null>(null);
   const [history, setHistory] = useState<PastSession[]>([]);
 
   // localStorage faqat brauzerda — birinchi renderdan keyin o'qiymiz,
   // shunda server va mijoz HTML'i mos keladi.
   useEffect(() => {
     setPrefsState(loadPrefs());
-    setCurrentState(loadCurrent());
+    setVibeState(loadVibe());
     setHistory(loadHistory());
     setReady(true);
   }, []);
@@ -65,13 +67,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setLocale = useCallback(
-    (l: Locale) => setPrefs({ locale: l }),
+    (l: Locale) => setPrefs({ locale: l, translation: null }),
     [setPrefs]
   );
 
-  const setCurrent = useCallback((s: CurrentSession | null) => {
-    setCurrentState(s);
-    saveCurrent(s);
+  const setVibe = useCallback((s: VibeSession | null) => {
+    setVibeState(s);
+    saveVibe(s);
   }, []);
 
   const pushHistory = useCallback((s: PastSession) => {
@@ -82,13 +84,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const updateHistory = useCallback((id: string, patch: Partial<PastSession>) => {
-    setHistory((prev) => {
-      const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
-      saveHistory(next);
-      return next;
-    });
-  }, []);
+  const updateHistory = useCallback(
+    (id: string, patch: Partial<PastSession>) => {
+      setHistory((prev) => {
+        const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
+        saveHistory(next);
+        return next;
+      });
+    },
+    []
+  );
 
   const value = useMemo<AppValue>(
     () => ({
@@ -99,8 +104,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLocale,
       t: (key, vars) => translate(prefs.locale, key, vars),
       ln: (v) => v[prefs.locale],
-      current,
-      setCurrent,
+      translationId: resolveTranslation(prefs.locale, prefs.translation),
+      vibe,
+      setVibe,
       history,
       pushHistory,
       updateHistory,
@@ -110,8 +116,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       prefs,
       setPrefs,
       setLocale,
-      current,
-      setCurrent,
+      vibe,
+      setVibe,
       history,
       pushHistory,
       updateHistory,

@@ -8,15 +8,19 @@ import type {
   ScriptId,
 } from "./sakinah";
 
+export type RepeatMode = "off" | "ayah" | "segment";
+
 export interface Prefs {
   locale: Locale;
   intention: IntentionId;
   duration: Duration;
   format: FormatId;
   reciter: string;
+  /** quran.com tarjima resursi — til bilan birga tekshiriladi */
+  translation: number | null;
   background: BackgroundId;
   script: ScriptId;
-  /** 1–6 — Figmadagi «Font size» steperi */
+  /** 1–6 */
   fontSize: number;
   /** 1.6–2.6 */
   lineHeight: number;
@@ -25,14 +29,20 @@ export interface Prefs {
   /** 30–100 */
   brightness: number;
   reduceMotion: boolean;
+  /** 0.5–2 */
+  rate: number;
+  repeat: RepeatMode;
+  /** Onboarding overlay bir marta ko'rsatilgach yopiladi */
+  onboarded: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
   locale: "uz",
   intention: "comfort",
-  duration: 15,
+  duration: 10,
   format: "both",
   reciter: "sudais",
+  translation: null,
   background: "sakinah",
   script: "uthmani",
   fontSize: 4,
@@ -41,16 +51,21 @@ export const DEFAULT_PREFS: Prefs = {
   showTransliteration: false,
   brightness: 72,
   reduceMotion: false,
+  rate: 1,
+  repeat: "off",
+  onboarded: false,
 };
 
 /** Figmadagi steper 1–6 → arabcha matn o'lchami */
 export const ARABIC_SIZES = [26, 32, 38, 46, 54, 64];
 
-export interface CurrentSession {
+export const RATES = [0.75, 1, 1.25, 1.5, 2];
+
+export interface VibeSession {
   mood: MoodId;
   startedAt: number;
-  /** Reminder ro'yxatidagi joriy parcha indeksi */
-  index: number;
+  minutes: Duration;
+  /** Navbat tugadi — «davom ettirasizmi?» so'ralgan */
   done: boolean;
 }
 
@@ -63,20 +78,9 @@ export interface PastSession {
   liked?: boolean;
 }
 
-const PREFS_KEY = "noor.prefs.v1";
-const CURRENT_KEY = "noor.session.current.v1";
-const HISTORY_KEY = "noor.session.history.v1";
-
-function read<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return { ...fallback, ...(JSON.parse(raw) as object) } as T;
-  } catch {
-    return fallback;
-  }
-}
+const PREFS_KEY = "noor.prefs.v2";
+const VIBE_KEY = "noor.vibe.v2";
+const HISTORY_KEY = "noor.history.v2";
 
 function write(key: string, value: unknown): void {
   if (typeof window === "undefined") return;
@@ -87,54 +91,78 @@ function write(key: string, value: unknown): void {
   }
 }
 
+function readJson<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function loadPrefs(): Prefs {
-  return read<Prefs>(PREFS_KEY, DEFAULT_PREFS);
+  const stored = readJson<Partial<Prefs>>(PREFS_KEY);
+  return stored ? { ...DEFAULT_PREFS, ...stored } : DEFAULT_PREFS;
 }
 
 export function savePrefs(p: Prefs): void {
   write(PREFS_KEY, p);
 }
 
-export function loadCurrent(): CurrentSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(CURRENT_KEY);
-    return raw ? (JSON.parse(raw) as CurrentSession) : null;
-  } catch {
-    return null;
-  }
+export function loadVibe(): VibeSession | null {
+  return readJson<VibeSession>(VIBE_KEY);
 }
 
-export function saveCurrent(s: CurrentSession | null): void {
+export function saveVibe(s: VibeSession | null): void {
   if (typeof window === "undefined") return;
-  if (s === null) window.localStorage.removeItem(CURRENT_KEY);
-  else write(CURRENT_KEY, s);
+  if (s === null) window.localStorage.removeItem(VIBE_KEY);
+  else write(VIBE_KEY, s);
 }
 
 export function loadHistory(): PastSession[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(HISTORY_KEY);
-    return raw ? (JSON.parse(raw) as PastSession[]) : [];
-  } catch {
-    return [];
-  }
+  return readJson<PastSession[]>(HISTORY_KEY) ?? [];
 }
 
 export function saveHistory(list: PastSession[]): void {
   write(HISTORY_KEY, list.slice(0, 12));
 }
 
-/** "Kecha", "3 kun oldin", "O'tgan hafta" — Figmadagi kabi */
+/** "Kecha", "3 kun oldin", "O'tgan hafta" */
 export function relativeDay(at: number, locale: Locale): string {
   const days = Math.floor((Date.now() - at) / 86_400_000);
   const table: Record<Locale, (d: number) => string> = {
     uz: (d) =>
-      d <= 0 ? "Bugun" : d === 1 ? "Kecha" : d < 7 ? `${d} kun oldin` : "O'tgan hafta",
+      d <= 0
+        ? "Bugun"
+        : d === 1
+          ? "Kecha"
+          : d < 7
+            ? `${d} kun oldin`
+            : "O'tgan hafta",
     ru: (d) =>
-      d <= 0 ? "Сегодня" : d === 1 ? "Вчера" : d < 7 ? `${d} дн. назад` : "На прошлой неделе",
+      d <= 0
+        ? "Сегодня"
+        : d === 1
+          ? "Вчера"
+          : d < 7
+            ? `${d} дн. назад`
+            : "На прошлой неделе",
     en: (d) =>
-      d <= 0 ? "Today" : d === 1 ? "Yesterday" : d < 7 ? `${d} days ago` : "Last week",
+      d <= 0
+        ? "Today"
+        : d === 1
+          ? "Yesterday"
+          : d < 7
+            ? `${d} days ago`
+            : "Last week",
   };
   return table[locale](days);
+}
+
+export function formatClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
