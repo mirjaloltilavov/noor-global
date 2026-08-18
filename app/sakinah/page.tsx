@@ -14,17 +14,24 @@ import { relativeDay } from "@/lib/session";
 export default function SakinahPage() {
   const player = usePlayer();
   const [onboarding, setOnboarding] = useState(false);
-  const { setPrefs, setVibe, vibe } = useApp();
+  const { prefs, setPrefs, setVibe, vibe } = useApp();
 
   return (
     <>
-      {player.active ? (
+      {player.active && !player.minimized ? (
         <ReadingScene
           onExit={player.closePlayer}
           onRetune={() => setOnboarding(true)}
         />
       ) : (
-        <Hub onBegin={() => setOnboarding(true)} />
+        <Hub
+          onBegin={() => {
+            // Ikkinchi marta — savollarsiz, oxirgi kayfiyat bilan davom etadi
+            if (prefs.onboarded && vibe) player.startVibe(vibe.mood);
+            else setOnboarding(true);
+          }}
+          onReconfigure={() => setOnboarding(true)}
+        />
       )}
 
       {onboarding && (
@@ -44,7 +51,13 @@ export default function SakinahPage() {
 
 /* ——— Uy sahifasi ————————————————————————————————————— */
 
-function Hub({ onBegin }: { onBegin: () => void }) {
+function Hub({
+  onBegin,
+  onReconfigure,
+}: {
+  onBegin: () => void;
+  onReconfigure: () => void;
+}) {
   const { t, ln, locale, prefs, setPrefs, vibe, setVibe, history, ready } =
     useApp();
   const player = usePlayer();
@@ -134,11 +147,20 @@ function Hub({ onBegin }: { onBegin: () => void }) {
             >
               {t("entry.begin")}
             </button>
+            {prefs.onboarded && vibe && (
+              <button
+                type="button"
+                onClick={onReconfigure}
+                className="h-12 rounded-full border border-line-bold bg-surface px-6 text-sm font-semibold text-ink transition hover:border-ink-muted active:scale-95"
+              >
+                {t("vibe.retune")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setHowOpen((v) => !v)}
               aria-expanded={howOpen}
-              className="h-12 rounded-full border border-line-bold bg-surface px-6 text-sm font-semibold text-ink transition hover:border-ink-muted"
+              className="h-12 rounded-full border border-line-bold bg-surface px-6 text-sm font-semibold text-ink transition hover:border-ink-muted active:scale-95"
             >
               {t("entry.how")}
             </button>

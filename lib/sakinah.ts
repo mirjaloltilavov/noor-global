@@ -468,8 +468,8 @@ export interface Reciter {
   name: string;
   style: L10n;
   place: L10n;
-  /** everyayah.com/data/<path>/SSSAAA.mp3 */
-  path: string;
+  /** quran.com recitation id — so'zma-so'z vaqt belgilari shundan keladi */
+  recitationId: number;
 }
 
 export const RECITERS: Reciter[] = [
@@ -478,28 +478,28 @@ export const RECITERS: Reciter[] = [
     name: "Abdur Rahman As-Sudais",
     style: { uz: "Mujavvad", ru: "Муджаввад", en: "Mujawwad" },
     place: { uz: "Makka", ru: "Мекка", en: "Makkah" },
-    path: "Abdurrahmaan_As-Sudais_192kbps",
+    recitationId: 3,
   },
   {
     id: "alafasy",
     name: "Mishary Alafasy",
     style: { uz: "Murattal", ru: "Мураттал", en: "Murattal" },
     place: { uz: "Quvayt", ru: "Кувейт", en: "Kuwait" },
-    path: "Alafasy_128kbps",
+    recitationId: 7,
   },
   {
-    id: "ghamdi",
-    name: "Saad Al-Ghamdi",
+    id: "shuraym",
+    name: "Saud Ash-Shuraym",
     style: { uz: "Murattal", ru: "Мураттал", en: "Murattal" },
-    place: { uz: "Riyod", ru: "Эр-Рияд", en: "Riyadh" },
-    path: "Ghamadi_40kbps",
+    place: { uz: "Makka", ru: "Мекка", en: "Makkah" },
+    recitationId: 10,
   },
   {
     id: "husary",
     name: "Mahmoud Al-Husary",
     style: { uz: "Muallim", ru: "Муаллим", en: "Muallim" },
     place: { uz: "Qohira", ru: "Каир", en: "Cairo" },
-    path: "Husary_128kbps",
+    recitationId: 12,
   },
 ];
 
@@ -507,11 +507,41 @@ export function getReciter(id: string): Reciter {
   return RECITERS.find((r) => r.id === id) ?? RECITERS[0];
 }
 
-export function audioUrl(reciterId: string, surah: number, ayah: number): string {
-  const r = getReciter(reciterId);
-  const pad = (n: number) => String(n).padStart(3, "0");
-  return `https://everyayah.com/data/${r.path}/${pad(surah)}${pad(ayah)}.mp3`;
+/* ————————————————————————————————————————————————————————————
+   Fon ohangi — fon o'zgarganda interfeys rangi ham unga moslashadi
+———————————————————————————————————————————————————————————— */
+
+export interface Tone {
+  /** Asosiy urg'u rangi */
+  accent: string;
+  /** Urg'uning shaffof varianti */
+  accentSoft: string;
+  /** Qorong'i yuza */
+  panel: string;
 }
+
+export const TONES: Record<BackgroundId, Tone> = {
+  nur: {
+    accent: "#7dffc5",
+    accentSoft: "rgba(125, 255, 197, 0.18)",
+    panel: "rgba(8, 32, 22, 0.92)",
+  },
+  mushaf: {
+    accent: "#f2c879",
+    accentSoft: "rgba(242, 200, 121, 0.18)",
+    panel: "rgba(34, 26, 12, 0.92)",
+  },
+  sakinah: {
+    accent: "#1ece83",
+    accentSoft: "rgba(30, 206, 131, 0.18)",
+    panel: "rgba(13, 36, 26, 0.92)",
+  },
+  layl: {
+    accent: "#8fb6ff",
+    accentSoft: "rgba(143, 182, 255, 0.18)",
+    panel: "rgba(12, 20, 44, 0.92)",
+  },
+};
 
 /* ————————————————————————————————————————————————————————————
    O'qish sahnasi — fonlar va tipografika

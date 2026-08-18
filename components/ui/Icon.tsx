@@ -29,7 +29,13 @@ export type IconName =
   | "headphones"
   | "layers"
   | "globe"
-  | "sparkle";
+  | "sparkle"
+  | "translate"
+  | "list"
+  | "image"
+  | "minimize"
+  | "waveform"
+  | "aura";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   quran: (
@@ -145,6 +151,41 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   layers: <rect x="6" y="6" width="12" height="12" rx="3" />,
+  translate: (
+    <>
+      <path d="M3.5 6.5h8M7.5 4.5v2M9.5 6.5c-.6 4-3 6.4-6 7.5M5.5 9.5c.9 2.2 2.6 3.6 4.8 4.3" />
+      <path d="m12.5 19.5 4-9 4 9M13.9 16.5h5.2" />
+    </>
+  ),
+  list: (
+    <>
+      <path d="M9 6.5h11M9 12h11M9 17.5h11" />
+      <path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="3" />
+      <circle cx="8.5" cy="9.5" r="1.6" />
+      <path d="m4 17 4.5-4.5 4 3.5L16 12l4 4.5" />
+    </>
+  ),
+  minimize: (
+    <>
+      <path d="M9.5 4.5v5h-5" />
+      <path d="M14.5 19.5v-5h5" />
+      <path d="m4.5 9.5 5-5M19.5 14.5l-5 5" />
+    </>
+  ),
+  waveform: (
+    <path d="M3 12h2.5M8 7.5v9M12 4.5v15M16 8.5v7M20.5 11v2" />
+  ),
+  aura: (
+    <>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 4.2a7.8 7.8 0 0 1 0 15.6M12 4.2a7.8 7.8 0 0 0 0 15.6" opacity=".55" />
+    </>
+  ),
   globe: (
     <>
       <circle cx="12" cy="12" r="8.5" />

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Scheherazade_New } from "next/font/google";
+import { AuraWidget } from "@/components/player/AuraWidget";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { AppProvider } from "@/components/providers/AppProvider";
 import "./globals.css";
@@ -36,7 +37,10 @@ export default function RootLayout({
     <html lang="uz" className={`${inter.variable} ${arabic.variable}`}>
       <body className="font-sans antialiased">
         <AppProvider>
-          <PlayerProvider>{children}</PlayerProvider>
+          <PlayerProvider>
+            {children}
+            <AuraWidget />
+          </PlayerProvider>
         </AppProvider>
       </body>
     </html>

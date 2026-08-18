@@ -2,6 +2,15 @@ import { TRANSLITERATION_ID } from "./sakinah";
 
 const API = "https://api.quran.com/api/v4";
 
+/** [segment, so'z raqami, boshlanish ms, tugash ms] */
+export type WordSegment = [number, number, number, number];
+
+export interface Word {
+  position: number;
+  uthmani: string;
+  indopak: string;
+}
+
 export interface Ayah {
   key: string;
   surah: number;
@@ -10,6 +19,11 @@ export interface Ayah {
   indopak: string;
   translation: string;
   transliteration: string;
+  /** Tilovat fayli (to'liq URL) */
+  audio: string;
+  /** So'zma-so'z vaqt belgilari — karaoke rejimi uchun */
+  segments: WordSegment[];
+  words: Word[];
 }
 
 export interface Chapter {
@@ -29,18 +43,42 @@ function stripHtml(input: string): string {
     .trim();
 }
 
+/** API ba'zan nisbiy, ba'zan protokolsiz manzil qaytaradi */
+function absoluteAudio(url: string): string {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("//")) return `https:${url}`;
+  return `https://verses.quran.com/${url}`;
+}
+
+interface RawWord {
+  position: number;
+  char_type_name?: string;
+  text_uthmani?: string;
+  text_indopak?: string;
+}
+
 interface RawVerse {
   verse_key: string;
   text_uthmani?: string;
   text_indopak?: string;
   translations?: { resource_id: number; text: string }[];
+  audio?: { url: string; segments?: WordSegment[] };
+  words?: RawWord[];
 }
 
-async function fetchVerse(key: string, translationId: number): Promise<Ayah> {
+async function fetchVerse(
+  key: string,
+  translationId: number,
+  recitationId: number
+): Promise<Ayah> {
   const ids = [translationId, TRANSLITERATION_ID].join(",");
   const url =
     `${API}/verses/by_key/${key}` +
-    `?fields=text_uthmani,text_indopak&translations=${ids}`;
+    `?fields=text_uthmani,text_indopak` +
+    `&translations=${ids}` +
+    `&audio=${recitationId}` +
+    `&words=true&word_fields=text_uthmani,text_indopak`;
 
   const res = await fetch(url, { next: { revalidate: 60 * 60 * 24 * 7 } });
   if (!res.ok) throw new Error(`quran.com ${res.status} for ${key}`);
@@ -52,6 +90,15 @@ async function fetchVerse(key: string, translationId: number): Promise<Ayah> {
   const byId = (id: number) =>
     stripHtml(v.translations?.find((t) => t.resource_id === id)?.text ?? "");
 
+  // Oyat raqami belgisi so'z emas — uni tashlab yuboramiz
+  const words = (v.words ?? [])
+    .filter((w) => w.char_type_name !== "end")
+    .map((w) => ({
+      position: w.position,
+      uthmani: w.text_uthmani ?? "",
+      indopak: w.text_indopak ?? w.text_uthmani ?? "",
+    }));
+
   return {
     key,
     surah,
@@ -60,6 +107,9 @@ async function fetchVerse(key: string, translationId: number): Promise<Ayah> {
     indopak: v.text_indopak ?? v.text_uthmani ?? "",
     translation: byId(translationId),
     transliteration: byId(TRANSLITERATION_ID),
+    audio: absoluteAudio(v.audio?.url ?? ""),
+    segments: v.audio?.segments ?? [],
+    words,
   };
 }
 
@@ -68,11 +118,12 @@ export async function fetchPassage(
   surah: number,
   from: number,
   to: number,
-  translationId: number
+  translationId: number,
+  recitationId: number
 ): Promise<Ayah[]> {
   const keys: string[] = [];
   for (let a = from; a <= to; a++) keys.push(`${surah}:${a}`);
-  return Promise.all(keys.map((k) => fetchVerse(k, translationId)));
+  return Promise.all(keys.map((k) => fetchVerse(k, translationId, recitationId)));
 }
 
 interface RawChapter {
@@ -83,7 +134,7 @@ interface RawChapter {
   translated_name?: { name: string };
 }
 
-/** 114 sura ro'yxati — pleyerdagi sura tanlagichi uchun */
+/** 114 sura ro'yxati */
 export async function fetchChapters(language: string): Promise<Chapter[]> {
   const res = await fetch(`${API}/chapters?language=${language}`, {
     next: { revalidate: 60 * 60 * 24 * 30 },

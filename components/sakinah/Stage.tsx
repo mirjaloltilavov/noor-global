@@ -1,6 +1,6 @@
 "use client";
 
-import type { BackgroundId } from "@/lib/sakinah";
+import { TONES, type BackgroundId } from "@/lib/sakinah";
 
 /**
  * Figmadagi 4 ta o'qish foni. Har biri sekin harakatlanadi;
@@ -27,7 +27,12 @@ export function Stage({
         className,
       ].join(" ")}
       style={
-        { "--sk-brightness": brightness / 100 } as React.CSSProperties
+        {
+          "--sk-brightness": brightness / 100,
+          "--sk-accent": TONES[background].accent,
+          "--sk-accent-soft": TONES[background].accentSoft,
+          "--sk-panel": TONES[background].panel,
+        } as React.CSSProperties
       }
     >
       <div className="sk-stage" aria-hidden="true">

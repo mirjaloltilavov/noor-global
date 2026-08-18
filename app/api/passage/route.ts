@@ -16,24 +16,27 @@ export async function GET(request: Request) {
   const from = num(params.get("from"));
   const to = num(params.get("to"));
   const translation = num(params.get("translation"));
+  const recitation = num(params.get("recitation"));
 
   if (
     surah === null ||
     from === null ||
     to === null ||
     translation === null ||
+    recitation === null ||
     surah < 1 ||
     surah > 114 ||
     from < 1 ||
     to < from ||
     to - from > 20 ||
-    translation < 1
+    translation < 1 ||
+    recitation < 1
   ) {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 
   try {
-    const ayahs = await fetchPassage(surah, from, to, translation);
+    const ayahs = await fetchPassage(surah, from, to, translation, recitation);
     return NextResponse.json({ ayahs });
   } catch {
     return NextResponse.json({ error: "upstream" }, { status: 502 });

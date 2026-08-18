@@ -295,3 +295,137 @@ body {
 .sk-still .anim-breathe {
   animation: none !important;
 }
+
+/* ——— Ohang (fon bo'yicha) ————————————————————————————— */
+
+:root {
+  --sk-accent: #1ece83;
+  --sk-accent-soft: rgba(30, 206, 131, 0.18);
+  --sk-panel: rgba(13, 36, 26, 0.92);
+}
+
+.tone-text {
+  color: var(--sk-accent);
+}
+.tone-bg {
+  background-color: var(--sk-accent);
+}
+.tone-bg-soft {
+  background-color: var(--sk-accent-soft);
+}
+.tone-border {
+  border-color: var(--sk-accent);
+}
+.tone-panel {
+  background-color: var(--sk-panel);
+}
+
+/* ——— «Boshlash» yorug'ligi ——————————————————————————— */
+
+@keyframes sk-bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@keyframes sk-bloom-rays {
+  from {
+    opacity: 0;
+    transform: rotate(0deg) scale(0.8);
+  }
+  40% {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 0;
+    transform: rotate(28deg) scale(1.9);
+  }
+}
+
+.sk-bloom-core {
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 0.95) 0%,
+    var(--sk-accent) 22%,
+    rgba(0, 0, 0, 0) 68%
+  );
+  animation: sk-bloom 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sk-bloom-rays {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--sk-accent-soft) 12deg,
+    transparent 24deg,
+    transparent 60deg,
+    var(--sk-accent-soft) 72deg,
+    transparent 84deg,
+    transparent 120deg,
+    var(--sk-accent-soft) 132deg,
+    transparent 144deg,
+    transparent 200deg,
+    var(--sk-accent-soft) 212deg,
+    transparent 224deg,
+    transparent 280deg,
+    var(--sk-accent-soft) 292deg,
+    transparent 304deg
+  );
+  animation: sk-bloom-rays 1500ms ease-out both;
+}
+
+/* ——— Aura vidjeti (pleyer fonda) ————————————————————— */
+
+@keyframes sk-aura-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
+.sk-aura-ring {
+  animation: sk-aura-ring 2800ms ease-out infinite;
+}
+.sk-aura-ring-2 {
+  animation-delay: 900ms;
+}
+.sk-aura-ring-3 {
+  animation-delay: 1800ms;
+}
+
+/* ——— Karaoke ————————————————————————————————————————— */
+
+.kw {
+  transition:
+    opacity 220ms ease,
+    text-shadow 220ms ease;
+  opacity: 0.38;
+}
+.kw-done {
+  opacity: 0.62;
+}
+.kw-now {
+  opacity: 1;
+  text-shadow: 0 0 22px var(--sk-accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-bloom-core,
+  .sk-bloom-rays,
+  .sk-aura-ring {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

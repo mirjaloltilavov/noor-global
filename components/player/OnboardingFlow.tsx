@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon } from "@/components/ui/Icon";
@@ -19,6 +19,8 @@ import {
 
 const STEPS = 4;
 const PREPARE_MS = 2200;
+/** «Boshlash» bosilgach yorug'lik ochilishi */
+const BLOOM_MS = 1500;
 
 /**
  * Figmadagi Sakinah onboardingi (S2–S6): to'rtta ketma-ket savol,
@@ -35,15 +37,29 @@ export function OnboardingFlow({
 }) {
   const { t, ln, prefs, setPrefs } = useApp();
 
-  const [step, setStep] = useState(0);
+  // -1 — yorug'lik ochilishi, 0..3 — savollar, 4 — tayyorlanish
+  const [step, setStep] = useState(-1);
   const [mood, setMood] = useState<MoodId>(initialMood ?? "anxious");
 
-  // Oxirgi qadam — tayyorlanish, so'ng tilovat boshlanadi
+  // Yorug'lik tugagach birinchi savol
+  useEffect(() => {
+    if (step !== -1) return;
+    const id = window.setTimeout(() => setStep(0), BLOOM_MS);
+    return () => window.clearTimeout(id);
+  }, [step]);
+
+  // Oxirgi qadam — tayyorlanish, so'ng tilovat boshlanadi.
+  // onBegin/mood ref orqali o'qiladi, aks holda har renderda taymer tiklanadi.
+  const beginRef = useRef(onBegin);
+  const moodRef = useRef(mood);
+  beginRef.current = onBegin;
+  moodRef.current = mood;
+
   useEffect(() => {
     if (step !== STEPS) return;
-    const id = window.setTimeout(() => onBegin(mood), PREPARE_MS);
+    const id = window.setTimeout(() => beginRef.current(moodRef.current), PREPARE_MS);
     return () => window.clearTimeout(id);
-  }, [step, mood, onBegin]);
+  }, [step]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -53,7 +69,7 @@ export function OnboardingFlow({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const back = () => (step === 0 ? onClose() : setStep((s) => s - 1));
+  const back = () => (step <= 0 ? onClose() : setStep((s) => s - 1));
   const forward = () => setStep((s) => s + 1);
 
   return (
@@ -64,8 +80,15 @@ export function OnboardingFlow({
         reduceMotion={prefs.reduceMotion}
       >
         <div className="flex h-screen flex-col">
+          {step === -1 && <Bloom />}
+
           {/* Yuqori qator */}
-          <header className="flex items-center gap-4 px-4 py-5 sm:px-8">
+          <header
+            className={[
+              "flex items-center gap-4 px-4 py-5 transition-opacity duration-500 sm:px-8",
+              step === -1 ? "opacity-0" : "opacity-100",
+            ].join(" ")}
+          >
             <button
               type="button"
               onClick={back}
@@ -84,8 +107,8 @@ export function OnboardingFlow({
                   className="h-[3px] w-8 overflow-hidden rounded-full bg-white/15 sm:w-12"
                 >
                   <span
-                    className="block h-full rounded-full bg-brand transition-all duration-500"
-                    style={{ width: i <= step ? "100%" : "0%" }}
+                    className="tone-bg block h-full rounded-full transition-all duration-500"
+                    style={{ width: step >= 0 && i <= step ? "100%" : "0%" }}
                   />
                 </span>
               ))}
@@ -246,7 +269,7 @@ function Question({
         <button
           type="button"
           onClick={onNext}
-          className="h-12 rounded-full bg-brand px-10 text-base font-semibold text-night-base transition hover:bg-brand-strong hover:text-white active:scale-95"
+          className="tone-bg h-12 rounded-full px-10 text-base font-semibold text-night-base transition hover:brightness-110 active:scale-95"
         >
           {cta}
         </button>
@@ -290,7 +313,7 @@ function Card({
         "relative flex min-h-[92px] flex-col justify-center rounded-2xl border px-5 py-4 text-left transition duration-200",
         "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
         selected
-          ? "border-brand bg-brand/15 shadow-[0_0_0_1px_rgba(30,206,131,0.35)]"
+          ? "tone-border tone-bg-soft"
           : "border-white/[0.09] bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]",
       ].join(" ")}
     >
@@ -309,9 +332,19 @@ function Card({
       )}
 
       {selected && (
-        <span className="anim-fade-in absolute bottom-3 left-5 h-1.5 w-1.5 rounded-full bg-brand" />
+        <span className="tone-bg anim-fade-in absolute bottom-3 left-5 h-1.5 w-1.5 rounded-full" />
       )}
     </button>
+  );
+}
+
+/** «Boshlash» bosilgach — yorug'lik ochilishi */
+function Bloom() {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <span className="sk-bloom-rays absolute h-[140vmax] w-[140vmax] rounded-full" />
+      <span className="sk-bloom-core absolute h-[70vmax] w-[70vmax] rounded-full" />
+    </div>
   );
 }
 
@@ -322,8 +355,8 @@ function Preparing() {
   return (
     <div className="anim-fade-in flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center">
       <span className="relative flex h-20 w-20 items-center justify-center">
-        <span className="anim-breathe absolute inset-0 rounded-full bg-brand/40" />
-        <span className="relative h-3 w-3 rounded-full bg-brand" />
+        <span className="tone-bg-soft anim-breathe absolute inset-0 rounded-full" />
+        <span className="tone-bg relative h-3 w-3 rounded-full" />
       </span>
 
       <p className="mt-8 text-lg font-medium text-white/90">{t("prep.title")}</p>

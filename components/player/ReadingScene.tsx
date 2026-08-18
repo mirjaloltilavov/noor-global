@@ -20,7 +20,6 @@ import {
   translationName,
 } from "@/lib/sakinah";
 import { ARABIC_SIZES } from "@/lib/session";
-import { prefetchPassage, usePassage } from "@/lib/useQuran";
 
 type Rail = "type" | "translation" | "background" | "audio" | null;
 type ModalKind = "surahs" | "queue" | null;
@@ -44,22 +43,8 @@ export function ReadingScene({
   const [controls, setControls] = useState(true);
   const [showTip, setShowTip] = useState(false);
 
-  const { segment, track, cursor, segments, segIndex } = player;
-
-  const { ayahs, loading, error } = usePassage(
-    segment?.surah ?? null,
-    segment?.from ?? null,
-    segment?.to ?? null,
-    translationId
-  );
-  const ayah = ayahs?.find((a) => a.ayah === track?.ayah) ?? null;
-
-  // Keyingi parcha oldindan yuklanadi — tilovat uzilmasin
-  useEffect(() => {
-    const nextSeg = segments[segIndex + 1];
-    if (nextSeg)
-      prefetchPassage(nextSeg.surah, nextSeg.from, nextSeg.to, translationId);
-  }, [segments, segIndex, translationId]);
+  const { segment, track, cursor, segments, segIndex, ayah, loading, error } =
+    player;
 
   /* ——— Boshqaruv harakatsizlikda yashirinadi ——— */
   const wake = useCallback(() => setControls(true), []);
@@ -81,7 +66,6 @@ export function ReadingScene({
     };
   }, [wake]);
 
-  // Panel yoki modal ochiq bo'lsa boshqaruv yashirinmasin
   useEffect(() => {
     if (rail || modal) setControls(true);
   }, [rail, modal]);
@@ -96,12 +80,12 @@ export function ReadingScene({
   const showTranslation = prefs.showTranslation && prefs.format === "both";
   const showTransliteration =
     prefs.showTransliteration && prefs.format === "both";
-  const arabicText = cursor.bismillah
-    ? BISMILLAH_TEXT
-    : prefs.script === "indopak"
-      ? ayah?.indopak ?? ""
-      : ayah?.uthmani ?? "";
+
   const fontPx = ARABIC_SIZES[Math.min(prefs.fontSize, ARABIC_SIZES.length) - 1];
+  const arabicStyle = {
+    fontSize: `clamp(${Math.round(fontPx * 0.55)}px, 7vw, ${fontPx}px)`,
+    lineHeight: prefs.lineHeight,
+  };
 
   const surahName = segment
     ? SURAHS[segment.surah]?.slug ??
@@ -118,6 +102,13 @@ export function ReadingScene({
 
   const fade = controls ? "opacity-100" : "pointer-events-none opacity-0";
 
+  // Karaoke faqat so'z va vaqt belgilari bo'lganda ishlaydi
+  const karaokeReady =
+    prefs.karaoke &&
+    !cursor.bismillah &&
+    (ayah?.words.length ?? 0) > 0 &&
+    (ayah?.segments.length ?? 0) > 0;
+
   return (
     <Stage
       background={prefs.background}
@@ -132,13 +123,13 @@ export function ReadingScene({
           <button
             type="button"
             onClick={onExit}
-            className="flex h-10 items-center gap-2 rounded-full bg-white/10 px-4 text-sm text-white/85 transition hover:bg-white/20"
+            className="flex h-10 items-center gap-2 rounded-full bg-white/10 px-4 text-sm text-white/85 transition hover:bg-white/20 active:scale-95"
           >
             <Icon name="arrowLeft" size={16} />
-            {t("nav.sakinah")}
+            <span className="hidden sm:inline">{t("nav.sakinah")}</span>
           </button>
 
-          <p className="text-sm text-white/60">
+          <p className="truncate text-sm text-white/60">
             {cursor.bismillah
               ? "Bismillah"
               : track && `${surahName} ${track.surah}:${track.ayah}`}
@@ -147,17 +138,18 @@ export function ReadingScene({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setRail(rail === "background" ? null : "background")}
-              aria-label={t("read.background")}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20"
+              onClick={() => player.setMinimized(true)}
+              aria-label={t("player.minimize")}
+              title={t("player.minimize")}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20 active:scale-95"
             >
-              <Icon name="settings" size={18} />
+              <Icon name="minimize" size={18} />
             </button>
             <button
               type="button"
               onClick={onExit}
               aria-label={t("common.close")}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20 active:scale-95"
             >
               <Icon name="close" size={18} />
             </button>
@@ -166,18 +158,21 @@ export function ReadingScene({
 
         {/* Fazilat maslahati */}
         <div
-          className={`px-8 text-center transition-opacity duration-700 ${
+          className={`px-6 text-center transition-opacity duration-700 sm:px-8 ${
             showTip && controls && segment?.note ? "opacity-100" : "opacity-0"
           }`}
         >
           <p className="mx-auto max-w-2xl text-xs leading-relaxed text-white/45">
-            {segment?.note ? ln(segment.note) : " "}
+            {segment?.note ? ln(segment.note) : " "}
           </p>
         </div>
 
         {/* Matn */}
         <main className="sk-scroll flex flex-1 items-center justify-center overflow-y-auto px-5 py-4 sm:px-10">
-          <div key={`${track?.surah}:${track?.ayah}:${cursor.bismillah}`} className="anim-fade-in w-full max-w-5xl text-center">
+          <div
+            key={`${track?.surah}:${track?.ayah}:${cursor.bismillah}`}
+            className="anim-fade-in w-full max-w-5xl text-center"
+          >
             {loading && !cursor.bismillah && (
               <p className="text-sm text-white/45">{t("common.loading")}</p>
             )}
@@ -185,38 +180,54 @@ export function ReadingScene({
               <p className="text-sm text-white/70">{t("common.error")}</p>
             )}
 
-            {(ayah || cursor.bismillah) && (
-              <>
-                <p
-                  className="arabic font-arabic text-white"
-                  style={{
-                    fontSize: `clamp(${Math.round(fontPx * 0.55)}px, 7vw, ${fontPx}px)`,
-                    lineHeight: prefs.lineHeight,
-                  }}
-                >
-                  {arabicText}
-                </p>
+            {cursor.bismillah && (
+              <p className="arabic font-arabic text-white" style={arabicStyle}>
+                {BISMILLAH_TEXT}
+              </p>
+            )}
 
-                {!cursor.bismillah && (
-                  <>
-                    {showTransliteration && ayah?.transliteration && (
-                      <p className="mt-6 text-sm italic text-white/45">
-                        {ayah.transliteration}
-                      </p>
-                    )}
-                    {showTranslation && ayah?.translation && (
-                      <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/70">
-                        {ayah.translation}
-                      </p>
-                    )}
-                  </>
+            {ayah && !cursor.bismillah && (
+              <>
+                {karaokeReady ? (
+                  <p className="arabic font-arabic text-white" style={arabicStyle}>
+                    {ayah.words.map((w, i) => (
+                      <span
+                        key={w.position}
+                        className={[
+                          "kw",
+                          i === player.wordIndex
+                            ? "kw-now"
+                            : i < player.wordIndex
+                              ? "kw-done"
+                              : "",
+                        ].join(" ")}
+                      >
+                        {prefs.script === "indopak" ? w.indopak : w.uthmani}{" "}
+                      </span>
+                    ))}
+                  </p>
+                ) : (
+                  <p className="arabic font-arabic text-white" style={arabicStyle}>
+                    {prefs.script === "indopak" ? ayah.indopak : ayah.uthmani}
+                  </p>
+                )}
+
+                {showTransliteration && ayah.transliteration && (
+                  <p className="mt-6 text-sm italic text-white/45">
+                    {ayah.transliteration}
+                  </p>
+                )}
+                {showTranslation && ayah.translation && (
+                  <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/70">
+                    {ayah.translation}
+                  </p>
                 )}
               </>
             )}
           </div>
         </main>
 
-        {/* O'ng ikonka ustuni */}
+        {/* Ikonka ustuni */}
         <div
           className={`fixed bottom-36 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-500 md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:translate-x-0 md:-translate-y-1/2 ${fade}`}
         >
@@ -228,7 +239,7 @@ export function ReadingScene({
               onClick={() => setRail(rail === "type" ? null : "type")}
             />
             <RailButton
-              icon="hadith"
+              icon="translate"
               label={t("read.translation")}
               active={rail === "translation"}
               onClick={() =>
@@ -236,7 +247,7 @@ export function ReadingScene({
               }
             />
             <RailButton
-              icon="layers"
+              icon="image"
               label={t("read.background")}
               active={rail === "background"}
               onClick={() =>
@@ -259,7 +270,7 @@ export function ReadingScene({
               onClick={() => setModal("surahs")}
             />
             <RailButton
-              icon="bookmark"
+              icon="list"
               label={t("player.queue")}
               active={modal === "queue"}
               onClick={() => setModal("queue")}
@@ -313,6 +324,23 @@ export function ReadingScene({
                   step={0.1}
                   onChange={(v) => setPrefs({ lineHeight: v })}
                 />
+
+                <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+                  <span>
+                    <span className="flex items-center gap-2 text-sm text-white/80">
+                      <Icon name="waveform" size={15} />
+                      {t("read.karaoke")}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-white/45">
+                      {t("read.karaokeHint")}
+                    </span>
+                  </span>
+                  <Toggle
+                    label={t("read.karaoke")}
+                    checked={prefs.karaoke}
+                    onChange={(v) => setPrefs({ karaoke: v })}
+                  />
+                </div>
               </Popover>
             )}
 
@@ -331,13 +359,13 @@ export function ReadingScene({
                         className={[
                           "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition",
                           translationId === tr.id
-                            ? "bg-brand/20 text-white"
+                            ? "tone-bg-soft text-white"
                             : "text-white/70 hover:bg-white/10",
                         ].join(" ")}
                       >
                         <span className="min-w-0 truncate">{tr.name}</span>
                         {translationId === tr.id && (
-                          <Icon name="check" size={15} className="text-brand" />
+                          <Icon name="check" size={15} className="tone-text" />
                         )}
                       </button>
                     </li>
@@ -379,7 +407,7 @@ export function ReadingScene({
                       className={[
                         "rounded-xl border p-1 text-left transition",
                         prefs.background === b.id
-                          ? "border-brand"
+                          ? "tone-border"
                           : "border-white/10 hover:border-white/30",
                       ].join(" ")}
                     >
@@ -437,7 +465,7 @@ export function ReadingScene({
                         className={[
                           "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition",
                           prefs.reciter === r.id
-                            ? "bg-brand/20"
+                            ? "tone-bg-soft"
                             : "hover:bg-white/10",
                         ].join(" ")}
                       >
@@ -450,7 +478,7 @@ export function ReadingScene({
                           </span>
                         </span>
                         {prefs.reciter === r.id && (
-                          <Icon name="check" size={16} className="text-brand" />
+                          <Icon name="check" size={16} className="tone-text" />
                         )}
                       </button>
                     </li>
@@ -487,17 +515,13 @@ export function ReadingScene({
           </div>
         )}
 
-        {/* Pastdagi suzuvchi boshqaruv */}
+        {/* Pastdagi boshqaruv */}
         <footer
           className={`px-4 pb-6 transition-opacity duration-500 sm:px-8 sm:pb-8 ${fade}`}
         >
           <div className="flex items-center justify-center">
             <div className="flex items-center gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur-md">
-              <CircleButton
-                icon="arrowLeft"
-                label="prev"
-                onClick={player.prev}
-              />
+              <CircleButton icon="arrowLeft" label="prev" onClick={player.prev} />
               <CircleButton
                 icon="back10"
                 label="-10"
@@ -507,7 +531,7 @@ export function ReadingScene({
                 type="button"
                 onClick={player.toggle}
                 aria-label={player.playing ? "pause" : "play"}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-night-base transition hover:bg-brand active:scale-90"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-night-base transition hover:brightness-90 active:scale-90"
               >
                 <Icon
                   name={player.playing ? "pause" : "play"}
@@ -533,7 +557,7 @@ export function ReadingScene({
           </p>
         </footer>
 
-        {/* Pastki chap — kayfiyat bo'limchasi */}
+        {/* Kayfiyat bo'limchasi */}
         {vibe && (
           <div className={`transition-opacity duration-500 ${fade}`}>
             <VibeChip
@@ -564,7 +588,7 @@ export function ReadingScene({
         {/* Progress */}
         <div className="fixed inset-x-0 bottom-0 h-1 bg-white/10">
           <div
-            className="h-full bg-brand transition-[width] duration-300"
+            className="tone-bg h-full transition-[width] duration-300"
             style={{ width: `${Math.min(100, queueProgress * 100)}%` }}
           />
         </div>
@@ -601,9 +625,9 @@ function FinishPrompt({
   const { t } = useApp();
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-night-base/75 p-6 backdrop-blur-md">
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-night-panel/90 p-8 text-center shadow-panel">
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-brand/40">
+    <div className="anim-fade-in fixed inset-0 z-40 flex items-center justify-center bg-night-base/75 p-6 backdrop-blur-md">
+      <div className="anim-pop w-full max-w-lg rounded-2xl border border-white/10 bg-night-panel/90 p-8 text-center shadow-panel">
+        <span className="tone-border mx-auto flex h-16 w-16 items-center justify-center rounded-full border">
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-night-base">
             <Icon name="check" size={16} />
           </span>
@@ -620,14 +644,14 @@ function FinishPrompt({
           <button
             type="button"
             onClick={onContinue}
-            className="h-11 rounded-full bg-brand px-7 text-sm font-semibold text-night-base transition hover:bg-brand-strong hover:text-white"
+            className="tone-bg h-11 rounded-full px-7 text-sm font-semibold text-night-base transition hover:brightness-110 active:scale-95"
           >
             {t("finish.yes")}
           </button>
           <button
             type="button"
             onClick={onEnd}
-            className="h-11 rounded-full bg-white/10 px-7 text-sm font-medium text-white transition hover:bg-white/20"
+            className="h-11 rounded-full bg-white/10 px-7 text-sm font-medium text-white transition hover:bg-white/20 active:scale-95"
           >
             {t("finish.no")}
           </button>
@@ -655,10 +679,11 @@ function RailButton({
       type="button"
       onClick={onClick}
       aria-label={label}
+      title={label}
       aria-pressed={active}
       className={[
-        "flex h-10 w-10 items-center justify-center rounded-xl transition",
-        active ? "bg-brand text-night-base" : "text-white/80 hover:bg-white/15",
+        "flex h-10 w-10 items-center justify-center rounded-xl transition active:scale-90",
+        active ? "tone-bg text-night-base" : "text-white/80 hover:bg-white/15",
       ].join(" ")}
     >
       <Icon name={icon} size={18} />
@@ -680,7 +705,7 @@ function CircleButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white"
+      className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white active:scale-90"
     >
       <Icon name={icon} size={18} />
     </button>

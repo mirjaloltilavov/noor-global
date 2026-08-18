@@ -21,9 +21,10 @@ export function usePassage(
   surah: number | null,
   from: number | null,
   to: number | null,
-  translationId: number
+  translationId: number,
+  recitationId: number
 ): PassageState {
-  const key = `${surah}:${from}-${to}:${translationId}`;
+  const key = `${surah}:${from}-${to}:${translationId}:${recitationId}`;
   const [state, setState] = useState<PassageState>(() => ({
     ayahs: passageCache.get(key) ?? null,
     loading: !passageCache.has(key),
@@ -43,7 +44,7 @@ export function usePassage(
     setState({ ayahs: null, loading: true, error: false });
 
     fetch(
-      `/api/passage?surah=${surah}&from=${from}&to=${to}&translation=${translationId}`
+      `/api/passage?surah=${surah}&from=${from}&to=${to}&translation=${translationId}&recitation=${recitationId}`
     )
       .then((r) =>
         r.ok ? r.json() : Promise.reject(new Error(String(r.status)))
@@ -60,7 +61,7 @@ export function usePassage(
     return () => {
       alive = false;
     };
-  }, [key, surah, from, to, translationId]);
+  }, [key, surah, from, to, translationId, recitationId]);
 
   return state;
 }
@@ -70,13 +71,14 @@ export function prefetchPassage(
   surah: number,
   from: number,
   to: number,
-  translationId: number
+  translationId: number,
+  recitationId: number
 ): void {
-  const key = `${surah}:${from}-${to}:${translationId}`;
+  const key = `${surah}:${from}-${to}:${translationId}:${recitationId}`;
   if (passageCache.has(key)) return;
 
   void fetch(
-    `/api/passage?surah=${surah}&from=${from}&to=${to}&translation=${translationId}`
+    `/api/passage?surah=${surah}&from=${from}&to=${to}&translation=${translationId}&recitation=${recitationId}`
   )
     .then((r) => (r.ok ? r.json() : null))
     .then((data: { ayahs: Ayah[] } | null) => {

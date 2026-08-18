@@ -32,6 +32,8 @@ export interface Prefs {
   /** 0.5–2 */
   rate: number;
   repeat: RepeatMode;
+  /** Karaoke — o'qilayotgan so'z yorqinroq ko'rsatiladi */
+  karaoke: boolean;
   /** Onboarding overlay bir marta ko'rsatilgach yopiladi */
   onboarded: boolean;
 }
@@ -53,6 +55,7 @@ export const DEFAULT_PREFS: Prefs = {
   reduceMotion: false,
   rate: 1,
   repeat: "off",
+  karaoke: true,
   onboarded: false,
 };
 

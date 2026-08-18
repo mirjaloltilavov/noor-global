@@ -11,8 +11,6 @@ import {
 } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import {
-  BISMILLAH_AYAH,
-  BISMILLAH_SURAH,
   extendPlan,
   flattenTracks,
   needsBismillah,
@@ -22,9 +20,9 @@ import {
   type Segment,
   type Track,
 } from "@/lib/queue";
-import { SURAHS, audioUrl, getMood, type MoodId } from "@/lib/sakinah";
-import type { Chapter } from "@/lib/quran";
-import { useChapters } from "@/lib/useQuran";
+import { SURAHS, getMood, getReciter, type MoodId } from "@/lib/sakinah";
+import type { Ayah, Chapter } from "@/lib/quran";
+import { prefetchPassage, useChapters, usePassage } from "@/lib/useQuran";
 
 interface Cursor {
   pos: number;
@@ -32,7 +30,6 @@ interface Cursor {
 }
 
 interface PlayerValue {
-  /** Navbat bo'sh bo'lsa pleyer hali ochilmagan */
   active: boolean;
   segments: Segment[];
   tracks: Track[];
@@ -44,8 +41,17 @@ interface PlayerValue {
   elapsed: number;
   clipLength: number;
   chapters: Chapter[];
-  /** Sessiya tugadi — «davom ettiramizmi?» so'ralmoqda */
   finished: boolean;
+
+  ayah: Ayah | null;
+  loading: boolean;
+  error: boolean;
+  /** Karaoke uchun — hozir o'qilayotgan so'z tartibi (0 dan), yo'q bo'lsa -1 */
+  wordIndex: number;
+
+  /** Pleyer fonda — sayt interfeysi ko'rinadi, tilovat davom etadi */
+  minimized: boolean;
+  setMinimized: (v: boolean) => void;
 
   play: () => void;
   pause: () => void;
@@ -65,8 +71,15 @@ interface PlayerValue {
 
 const Ctx = createContext<PlayerValue | null>(null);
 
+/** Bismillah — o'sha qorining Fotiha 1-oyati */
+function bismillahUrl(anyAyahAudio: string): string {
+  if (!anyAyahAudio) return "";
+  return anyAyahAudio.replace(/\d{6}\.mp3$/, "001001.mp3");
+}
+
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const { locale, prefs, vibe, setVibe, pushHistory } = useApp();
+  const { locale, prefs, translationId, vibe, setVibe, pushHistory } = useApp();
+  const recitationId = getReciter(prefs.reciter).recitationId;
 
   const [segments, setSegments] = useState<Segment[]>([]);
   const [cursor, setCursor] = useState<Cursor>({ pos: 0, bismillah: false });
@@ -74,6 +87,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [elapsed, setElapsed] = useState(0);
   const [clipLength, setClipLength] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chapters = useChapters(locale);
@@ -86,9 +100,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const inVibe = vibe !== null && !vibe.done;
 
-  /* ——— Kursor ————————————————————————————————————————
-     Bismillah kerakmi — o'rin bilan birga hisoblanadi, shunda audio
-     manbasi bir freym ham noto'g'ri bo'lib qolmaydi. */
+  const { ayahs, loading, error } = usePassage(
+    segment?.surah ?? null,
+    segment?.from ?? null,
+    segment?.to ?? null,
+    translationId,
+    recitationId
+  );
+  const ayah = ayahs?.find((a) => a.ayah === track?.ayah) ?? null;
+
+  /* ——— Kursor ——————————————————————————————————————— */
 
   const moveTo = useCallback(
     (nextPos: number, segs: Segment[] = segments, trs: Track[] = tracks) => {
@@ -100,10 +121,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ——— Audio ——————————————————————————————————————— */
 
   const src = cursor.bismillah
-    ? audioUrl(prefs.reciter, BISMILLAH_SURAH, BISMILLAH_AYAH)
-    : track
-      ? audioUrl(prefs.reciter, track.surah, track.ayah)
-      : "";
+    ? bismillahUrl(ayah?.audio ?? "")
+    : ayah?.audio ?? "";
 
   useEffect(() => {
     const el = audioRef.current;
@@ -127,6 +146,33 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (audioRef.current) audioRef.current.playbackRate = prefs.rate;
   }, [prefs.rate]);
 
+  // Keyingi parcha oldindan yuklanadi
+  useEffect(() => {
+    const nextSeg = segments[segIndex + 1];
+    if (nextSeg)
+      prefetchPassage(
+        nextSeg.surah,
+        nextSeg.from,
+        nextSeg.to,
+        translationId,
+        recitationId
+      );
+  }, [segments, segIndex, translationId, recitationId]);
+
+  /* ——— Karaoke ————————————————————————————————————— */
+
+  const wordIndex = useMemo(() => {
+    if (cursor.bismillah || !prefs.karaoke || !ayah?.segments.length) return -1;
+    const ms = elapsed * 1000;
+    for (let i = 0; i < ayah.segments.length; i++) {
+      const s = ayah.segments[i];
+      if (ms >= s[2] && ms < s[3]) return i;
+    }
+    // Oxirgi so'zdan keyin ham u yorqin qolsin
+    const last = ayah.segments[ayah.segments.length - 1];
+    return ms >= last[3] ? ayah.segments.length - 1 : -1;
+  }, [elapsed, ayah, prefs.karaoke, cursor.bismillah]);
+
   /* ——— Rejimlar ——————————————————————————————————— */
 
   const startVibe = useCallback(
@@ -144,6 +190,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         done: false,
       });
       setFinished(false);
+      setMinimized(false);
       setPlaying(true);
     },
     [prefs.duration, setVibe]
@@ -158,24 +205,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Tugallanmagan sessiya bo'lsa navbatni tiklaymiz (ijro o'zi boshlanmaydi)
-  useEffect(() => {
-    if (segments.length > 0 || !vibe || vibe.done) return;
-    const segs = planSegments(getMood(vibe.mood), vibe.minutes);
-    setSegments(segs);
-    setCursor({
-      pos: 0,
-      bismillah: needsBismillah(segs, flattenTracks(segs), 0),
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vibe]);
-
   /* ——— Navbat bo'ylab ——————————————————————————————— */
 
   const finishSession = useCallback(() => {
     if (!vibe) return;
     setPlaying(false);
     setFinished(true);
+    setMinimized(false);
     setVibe({ ...vibe, done: true });
 
     pushHistory({
@@ -217,7 +253,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Oddiy rejim — keyingi sura
     const nextSurah = (segment?.surah ?? 0) + 1;
     const ch = chapters.find((c) => c.id === nextSurah);
     if (ch) startSurah(ch.id, ch.verses);
@@ -295,7 +330,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setPlaying(true);
   }, [vibe, segments, setVibe, pos, moveTo]);
 
-  /** Vibe tugadi — pleyer yopilmaydi, oddiy rejimda davom etadi */
   const endSession = useCallback(() => {
     setFinished(false);
     const surah = segment?.surah ?? 1;
@@ -309,6 +343,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setSegments([]);
     setCursor({ pos: 0, bismillah: false });
     setFinished(false);
+    setMinimized(false);
   }, []);
 
   const value = useMemo<PlayerValue>(
@@ -325,6 +360,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       clipLength,
       chapters,
       finished,
+      ayah,
+      loading,
+      error,
+      wordIndex,
+      minimized,
+      setMinimized,
       play: () => setPlaying(true),
       pause: () => setPlaying(false),
       toggle: () => setPlaying((p) => !p),
@@ -351,6 +392,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       clipLength,
       chapters,
       finished,
+      ayah,
+      loading,
+      error,
+      wordIndex,
+      minimized,
       next,
       prev,
       seekBy,

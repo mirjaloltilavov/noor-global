@@ -17,15 +17,18 @@ Keyingi bosqichda oqim pleyer atrofida qayta yig'ildi.
 
 ### Oqim
 
-`/sakinah` — uy sahifasi, `/sakinah/player` — full-screen pleyer.
-`/player` ham pleyerga yo'naltiradi.
+Hammasi bitta manzilda — `/sakinah`. Navbat bo'sh bo'lsa uy sahifasi,
+sessiya boshlangach o'sha yerda full-screen o'qish sahnasi ochiladi.
 
 1. **Uy sahifasi** — hero, «Boshlash», standart qorini tanlash, so'nggi
    sessiyalar (qidiruv va «Takrorlash» bilan), tugallanmagan sessiya banneri.
-2. **Onboarding** — «Boshlash»dan keyin chiqadigan overlay: kayfiyat (6 ta),
+2. **Onboarding** — «Boshlash» bosilgach avval yorug'lik ochilishi, so'ng
+   to'rtta ketma-ket savol: kayfiyat (6 ta),
    davomiylik (10 / 30 / 45 daqiqa yoki cheksiz), format (tinglash yoki
    tinglash + o'qish), qori. «Kayfiyatsiz, oddiy pleyer» bilan o'tkazib
    yuborsa ham bo'ladi. Tanlangach full-screen pleyer ochiladi.
+   Ikkinchi marta «Boshlash» bosilganda savollar so'ralmaydi — oxirgi
+   kayfiyat bilan darhol davom etadi, sozlash esa burchakdagi vidjetdan.
 3. **Navbat** — tanlangan daqiqaga qarab tuziladi: avval kayfiyat bo'yicha
    kuratsiya qilingan parchalar, vaqt yetmasa o'sha suralarning davomi
    bo'laklarga bo'linib qo'shiladi. Cheksiz rejimda navbat tugashiga yaqin
@@ -39,6 +42,30 @@ Keyingi bosqichda oqim pleyer atrofida qayta yig'ildi.
    *Yo'q* — pleyerdan chiqilmaydi: oddiy rejimga o'tadi, sura ro'yxati ochiladi,
    vibe sessiyasi esa pastki chap burchakda bo'limcha bo'lib qoladi
    (qayta sozlash · qaytadan boshlash · chiqish).
+
+### Karaoke rejimi
+
+Tilovat davomida o'qilayotgan so'z yorqinlashadi, o'tganlari biroz so'nadi.
+So'zma-so'z vaqt belgilari quran.com API'sidan keladi (`audio.segments`),
+shuning uchun bu taqribiy emas — haqiqiy vaqt bo'yicha. Tipografika
+popoveridan yoqib-o'chiriladi.
+
+Shu sababli tilovat everyayah o'rniga quran.com CDN'idan olinadi va
+qorilar ro'yxati so'z belgilari mavjud bo'lganlar bilan cheklandi:
+As-Sudais · Alafasy · Ash-Shuraym · Al-Husary.
+
+### Ohang fon bilan o'zgaradi
+
+Har fonning o'z urg'u rangi bor va u butun interfeysga tarqaladi
+(`--sk-accent`): Nūr — yashil-oq, Mushaf — oltin, Sakīnah — yashil,
+Layl — ko'k. Tugmalar, progress, tanlangan holatlar shu rangda.
+
+### Fonda ijro
+
+O'qish sahnasidagi «fonda davom ettirish» tugmasi pleyerni yig'ib,
+sayt interfeysini ochadi. Tilovat to'xtamaydi, o'ng pastki burchakda
+esa pulsatsiya qiluvchi dumaloq **aura** vidjeti qoladi — bosilsa
+pleyerga qaytaradi.
 
 ### Bismillah
 
@@ -69,8 +96,9 @@ Yorqinlik slayderi va «Harakatni kamaytirish» tugmasi bor;
   standartlari: `uz` Muhammad Sodiq Muhammad Yusuf (lotin, id 55),
   `ru` Эльмир Кулиев (id 45), `en` Saheeh International (id 20);
   transliteratsiya — id 57.
-- **Audio** — [everyayah.com](https://everyayah.com) CDN, oyatma-oyat:
-  As-Sudais · Alafasy · Al-Ghamdi · Al-Husary.
+- **Audio va so'z vaqtlari** — quran.com CDN, oyatma-oyat:
+  As-Sudais · Alafasy · Ash-Shuraym · Al-Husary. Har bir oyat bilan
+  birga so'zma-so'z vaqt belgilari ham keladi (karaoke uchun).
 - **Parchalar tanlovi** — `lib/sakinah.ts` ichida qo'lda kuratsiya qilingan
   (kayfiyat → 3 parcha + nega aynan shu parcha izohi, uch tilda).
   Uzoqroq sessiyalar `lib/queue.ts` da o'sha suralarning davomi bilan to'ldiriladi.
@@ -94,16 +122,16 @@ http://localhost:3000 — `/sakinah` ga yo'naltiradi.
 
 ```
 app/
-  sakinah/            uy sahifasi (hero · qori · so'nggi sessiyalar)
-  sakinah/player/     full-screen pleyer
-  api/passage/        oyat matni + tarjima (kesh bilan)
+  sakinah/            uy sahifasi + o'qish sahnasi (bitta manzil)
+  api/passage/        oyat matni · tarjima · audio · so'z vaqtlari
   api/chapters/       114 sura ro'yxati
   quran|hadith|...    'tez orada' sahifalari
 components/
-  player/             PlayerScreen · Onboarding · SidePanel · VibeChip
+  player/             PlayerProvider · OnboardingFlow · ReadingScene ·
+                      SurahModal · QueueModal · VibeChip · AuraWidget
   sakinah/            fon sahnasi · popover elementlari
-  shell/              88px nav rail
-  ui/                 ikonka · select
+  shell/              nav rail (desktop ustun / mobil panel)
+  ui/                 ikonka · modal · select
 lib/
   sakinah.ts          kayfiyatlar · parchalar · qorilar · tarjimalar · fonlar
   queue.ts            davomiylikka qarab navbat tuzish

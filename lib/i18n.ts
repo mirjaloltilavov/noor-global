@@ -104,6 +104,12 @@ const uz: Dict = {
   "passage.next": "Keyingi parcha",
   "passage.adjust": "Sozlamalarni o'zgartirish",
 
+  "read.karaoke": "Karaoke rejimi",
+  "read.karaokeHint": "O'qilayotgan so'z yorqinlashadi",
+  "player.minimize": "Fonda davom ettirish",
+  "aura.resume": "Pleyerga qaytish",
+  "aura.playing": "Tilovat davom etmoqda",
+
   "q.mood.title": "Bugun qalbingiz qanday?",
   "q.mood.sub": "Eng yaqinini tanlang — noto'g'ri javob yo'q.",
   "q.mood.footer":
@@ -268,6 +274,12 @@ const ru: Dict = {
   "passage.next": "Следующий отрывок",
   "passage.adjust": "Изменить настройки",
 
+  "read.karaoke": "Режим караоке",
+  "read.karaokeHint": "Читаемое слово подсвечивается",
+  "player.minimize": "Свернуть в фон",
+  "aura.resume": "Вернуться в плеер",
+  "aura.playing": "Чтение продолжается",
+
   "q.mood.title": "Как ваше сердце сегодня?",
   "q.mood.sub": "Выберите наиболее близкое — неверного ответа нет.",
   "q.mood.footer":
@@ -431,6 +443,12 @@ const en: Dict = {
   "passage.continueSurah": "Continue the full surah",
   "passage.next": "Next passage",
   "passage.adjust": "Adjust settings",
+
+  "read.karaoke": "Karaoke mode",
+  "read.karaokeHint": "The word being recited brightens",
+  "player.minimize": "Keep playing in the background",
+  "aura.resume": "Back to the player",
+  "aura.playing": "Recitation is playing",
 
   "q.mood.title": "How is your heart today?",
   "q.mood.sub": "Choose what is closest — there is no wrong answer.",
