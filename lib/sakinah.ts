@@ -359,25 +359,49 @@ export type IntentionId =
   | "guidance"
   | "strength";
 
-export const INTENTIONS: { id: IntentionId; label: L10n }[] = [
+export const INTENTIONS: { id: IntentionId; label: L10n; arabic: string }[] = [
   {
     id: "comfort",
-    label: { uz: "Taskin va tinchlik", ru: "Утешение и покой", en: "Comfort and calm" },
+    label: {
+      uz: "Taskin va tinchlik",
+      ru: "Утешение и покой",
+      en: "Comfort and calm",
+    },
+    arabic: "طُمَأْنِينَة",
   },
   {
     id: "gratitude",
-    label: { uz: "Shukrni oshirish", ru: "Больше благодарности", en: "More gratitude" },
+    label: {
+      uz: "Shukrni oshirish",
+      ru: "Больше благодарности",
+      en: "More gratitude",
+    },
+    arabic: "شُكْر",
   },
-  { id: "patience", label: { uz: "Sabr", ru: "Терпение", en: "Patience" } },
+  {
+    id: "patience",
+    label: { uz: "Sabr", ru: "Терпение", en: "Patience" },
+    arabic: "صَبْر",
+  },
   {
     id: "forgiveness",
-    label: { uz: "Mag'firat so'rash", ru: "Прощение", en: "Seeking forgiveness" },
+    label: {
+      uz: "Mag'firat so'rash",
+      ru: "Прощение",
+      en: "Seeking forgiveness",
+    },
+    arabic: "اِسْتِغْفَار",
   },
   {
     id: "guidance",
     label: { uz: "Yo'l topish", ru: "Руководство", en: "Clarity and guidance" },
+    arabic: "هِدَايَة",
   },
-  { id: "strength", label: { uz: "Kuch", ru: "Сила", en: "Strength" } },
+  {
+    id: "strength",
+    label: { uz: "Kuch", ru: "Сила", en: "Strength" },
+    arabic: "قُوَّة",
+  },
 ];
 
 /** 0 — «cheksiz»: to'xtatilmaguncha davom etadi */
@@ -391,19 +415,49 @@ export const DURATION_LABELS: Record<Duration, L10n> = {
   0: { uz: "Cheksiz", ru: "Без ограничения", en: "Open-ended" },
 };
 
+export const DURATION_SUB: Record<Duration, L10n> = {
+  10: { uz: "Qisqa to'xtash", ru: "Короткая пауза", en: "A short pause" },
+  30: { uz: "Bir o'tirish", ru: "Одно сидение", en: "One sitting" },
+  45: { uz: "Uzoq o'tirish", ru: "Долгое сидение", en: "A long sitting" },
+  0: { uz: "To'xtatmaguncha", ru: "Пока не остановите", en: "Until you stop" },
+};
+
+export const DURATION_ARABIC: Record<Duration, string> = {
+  10: "١٠",
+  30: "٣٠",
+  45: "٤٥",
+  0: "∞",
+};
+
 export type FormatId = "listen" | "both";
 
-export const FORMATS: { id: FormatId; label: L10n }[] = [
-  { id: "listen", label: { uz: "Tinglash", ru: "Слушать", en: "Listen" } },
-  {
-    id: "both",
-    label: {
-      uz: "Tinglash + o'qish",
-      ru: "Слушать + читать",
-      en: "Listen + read",
+export const FORMATS: { id: FormatId; label: L10n; sub: L10n; arabic: string }[] =
+  [
+    {
+      id: "listen",
+      label: { uz: "Tinglash", ru: "Слушать", en: "Listen" },
+      sub: {
+        uz: "Faqat tilovat",
+        ru: "Только чтение вслух",
+        en: "Recitation only",
+      },
+      arabic: "إِسْتِمَاع",
     },
-  },
-];
+    {
+      id: "both",
+      label: {
+        uz: "Tinglash + o'qish",
+        ru: "Слушать + читать",
+        en: "Listen + read",
+      },
+      sub: {
+        uz: "Matn bilan birga",
+        ru: "Вместе с текстом",
+        en: "Recitation with the text",
+      },
+      arabic: "كِلَاهُمَا",
+    },
+  ];
 
 /* ————————————————————————————————————————————————————————————
    Qorilar — audio everyayah.com CDN orqali

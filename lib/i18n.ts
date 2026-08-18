@@ -104,6 +104,22 @@ const uz: Dict = {
   "passage.next": "Keyingi parcha",
   "passage.adjust": "Sozlamalarni o'zgartirish",
 
+  "q.mood.title": "Bugun qalbingiz qanday?",
+  "q.mood.sub": "Eng yaqinini tanlang — noto'g'ri javob yo'q.",
+  "q.mood.footer":
+    "Javoblaringiz qurilmangizda qoladi va holatingizni sharhlash uchun ishlatilmaydi.",
+  "q.intention.title": "Nimani izlayapsiz?",
+  "q.intention.sub": "Bu tanlov parchalar tartibiga ta'sir qiladi.",
+  "q.time.title": "Qancha vaqtingiz bor?",
+  "q.time.sub": "Navbat shu vaqtga moslab tuziladi.",
+  "q.format.title": "Qanday qabul qilasiz?",
+  "q.format.sub": "Buni o'qish paytida ham o'zgartirsangiz bo'ladi.",
+  "q.format.footer":
+    "Tilovat bilimli qori tomonidan o'qiladi — standart holda {reciter}.",
+  "q.continue": "Davom etish",
+  "q.skip": "Bu savolni o'tkazish",
+  "q.prepare": "Eslatmamni tayyorla",
+
   "player.title": "Pleyer",
   "player.nowPlaying": "Hozir tinglanmoqda",
   "player.queue": "Navbat",
@@ -252,6 +268,22 @@ const ru: Dict = {
   "passage.next": "Следующий отрывок",
   "passage.adjust": "Изменить настройки",
 
+  "q.mood.title": "Как ваше сердце сегодня?",
+  "q.mood.sub": "Выберите наиболее близкое — неверного ответа нет.",
+  "q.mood.footer":
+    "Ваши ответы остаются на устройстве и никогда не используются для толкования вашей ситуации.",
+  "q.intention.title": "Что вы ищете?",
+  "q.intention.sub": "Этот выбор влияет на порядок отрывков.",
+  "q.time.title": "Сколько у вас времени?",
+  "q.time.sub": "Очередь будет собрана под это время.",
+  "q.format.title": "Как вы хотите это получить?",
+  "q.format.sub": "Это можно изменить прямо во время чтения.",
+  "q.format.footer":
+    "Чтение исполняет квалифицированный чтец — по умолчанию {reciter}.",
+  "q.continue": "Продолжить",
+  "q.skip": "Пропустить вопрос",
+  "q.prepare": "Подготовить напоминание",
+
   "player.title": "Плеер",
   "player.nowPlaying": "Сейчас звучит",
   "player.queue": "Очередь",
@@ -399,6 +431,22 @@ const en: Dict = {
   "passage.continueSurah": "Continue the full surah",
   "passage.next": "Next passage",
   "passage.adjust": "Adjust settings",
+
+  "q.mood.title": "How is your heart today?",
+  "q.mood.sub": "Choose what is closest — there is no wrong answer.",
+  "q.mood.footer":
+    "Your answers stay on your device and are never used to interpret your situation.",
+  "q.intention.title": "What are you looking for?",
+  "q.intention.sub": "This shapes the order of the passages.",
+  "q.time.title": "How much time do you have?",
+  "q.time.sub": "The queue is built to fit it.",
+  "q.format.title": "How would you like to receive it?",
+  "q.format.sub": "You can change this while reading.",
+  "q.format.footer":
+    "Recitation is played by a qualified reciter — {reciter} by default.",
+  "q.continue": "Continue",
+  "q.skip": "Skip this question",
+  "q.prepare": "Prepare my reminder",
 
   "player.title": "Player",
   "player.nowPlaying": "Now playing",

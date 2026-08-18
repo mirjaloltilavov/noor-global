@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Onboarding } from "@/components/player/Onboarding";
+import { OnboardingFlow } from "@/components/player/OnboardingFlow";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { ReadingScene } from "@/components/player/ReadingScene";
 import { useApp } from "@/components/providers/AppProvider";
@@ -28,20 +28,12 @@ export default function SakinahPage() {
       )}
 
       {onboarding && (
-        <Onboarding
+        <OnboardingFlow
           initialMood={vibe?.mood ?? null}
-          dismissible
           onBegin={(mood) => {
             setPrefs({ onboarded: true });
             setOnboarding(false);
             player.startVibe(mood);
-          }}
-          onSkip={() => {
-            setPrefs({ onboarded: true });
-            setVibe(null);
-            setOnboarding(false);
-            player.startSurah(1, 7);
-            player.play();
           }}
           onClose={() => setOnboarding(false)}
         />
@@ -83,7 +75,7 @@ function Hub({ onBegin }: { onBegin: () => void }) {
         onSearch={setQuery}
       />
 
-      <main className="mx-auto max-w-content px-8 pb-20 pt-8">
+      <main className="mx-auto max-w-content px-4 pb-16 pt-6 sm:px-8 sm:pt-8">
         {/* Tugallanmagan sessiya */}
         {ready && vibe && !vibe.done && (
           <div className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl border border-brand/30 bg-brand-soft px-6 py-4">
@@ -119,15 +111,15 @@ function Hub({ onBegin }: { onBegin: () => void }) {
         )}
 
         {/* Hero */}
-        <section className="relative overflow-hidden rounded-2xl border border-brand/20 bg-brand-soft/60 px-10 py-9">
+        <section className="anim-fade-up relative overflow-hidden rounded-2xl border border-brand/20 bg-brand-soft/60 px-6 py-7 sm:px-10 sm:py-9">
           <span
-            className="arabic pointer-events-none absolute -right-4 top-1/2 hidden -translate-y-1/2 select-none font-arabic text-[110px] leading-none text-brand/20 lg:block"
+            className="arabic anim-fade-in pointer-events-none absolute -right-4 top-1/2 hidden -translate-y-1/2 select-none font-arabic text-[110px] leading-none text-brand/20 lg:block"
             aria-hidden="true"
           >
             سَكِينَة
           </span>
 
-          <h2 className="max-w-2xl text-[42px] font-semibold leading-[1.1] tracking-tightest text-ink">
+          <h2 className="max-w-2xl text-3xl font-semibold leading-[1.1] tracking-tightest text-ink sm:text-4xl lg:text-[42px]">
             {t("entry.title")}
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-secondary">
@@ -138,7 +130,7 @@ function Hub({ onBegin }: { onBegin: () => void }) {
             <button
               type="button"
               onClick={onBegin}
-              className="h-12 rounded-full bg-brand px-9 text-base font-semibold text-white transition hover:bg-brand-strong"
+              className="h-12 rounded-full bg-brand px-9 text-base font-semibold text-white transition hover:bg-brand-strong active:scale-95"
             >
               {t("entry.begin")}
             </button>
@@ -174,7 +166,7 @@ function Hub({ onBegin }: { onBegin: () => void }) {
             <p className="text-xs text-ink-muted">{t("compose.reciterHint")}</p>
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="anim-stagger mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             {RECITERS.map((r) => {
               const active = r.id === prefs.reciter;
               return (
@@ -235,7 +227,7 @@ function Hub({ onBegin }: { onBegin: () => void }) {
               {t("entry.empty")}
             </p>
           ) : (
-            <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="anim-stagger mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {shownHistory.map((s) => (
                 <article
                   key={s.id}

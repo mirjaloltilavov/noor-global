@@ -124,10 +124,10 @@ export function ReadingScene({
       brightness={prefs.brightness}
       reduceMotion={prefs.reduceMotion}
     >
-      <div className="flex min-h-screen flex-col">
+      <div className="flex h-screen flex-col">
         {/* Yuqori qator */}
         <header
-          className={`flex items-center justify-between px-8 py-6 transition-opacity duration-500 ${fade}`}
+          className={`flex items-center justify-between gap-3 px-4 py-5 transition-opacity duration-500 sm:px-8 sm:py-6 ${fade}`}
         >
           <button
             type="button"
@@ -176,8 +176,8 @@ export function ReadingScene({
         </div>
 
         {/* Matn */}
-        <main className="flex flex-1 items-center justify-center px-10">
-          <div className="w-full max-w-5xl text-center">
+        <main className="sk-scroll flex flex-1 items-center justify-center overflow-y-auto px-5 py-4 sm:px-10">
+          <div key={`${track?.surah}:${track?.ayah}:${cursor.bismillah}`} className="anim-fade-in w-full max-w-5xl text-center">
             {loading && !cursor.bismillah && (
               <p className="text-sm text-white/45">{t("common.loading")}</p>
             )}
@@ -190,7 +190,7 @@ export function ReadingScene({
                 <p
                   className="arabic font-arabic text-white"
                   style={{
-                    fontSize: `${fontPx}px`,
+                    fontSize: `clamp(${Math.round(fontPx * 0.55)}px, 7vw, ${fontPx}px)`,
                     lineHeight: prefs.lineHeight,
                   }}
                 >
@@ -218,9 +218,9 @@ export function ReadingScene({
 
         {/* O'ng ikonka ustuni */}
         <div
-          className={`fixed right-6 top-1/2 z-20 -translate-y-1/2 transition-opacity duration-500 ${fade}`}
+          className={`fixed bottom-36 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-500 md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:translate-x-0 md:-translate-y-1/2 ${fade}`}
         >
-          <div className="flex flex-col items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.08] p-1.5 backdrop-blur-md">
+          <div className="flex flex-row items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.08] p-1.5 backdrop-blur-md md:flex-col">
             <RailButton
               icon="type"
               label={t("read.typography")}
@@ -250,7 +250,7 @@ export function ReadingScene({
               onClick={() => setRail(rail === "audio" ? null : "audio")}
             />
 
-            <span className="my-1 h-px w-6 bg-white/10" />
+            <span className="mx-1 h-6 w-px bg-white/10 md:mx-0 md:my-1 md:h-px md:w-6" />
 
             <RailButton
               icon="quran"
@@ -269,7 +269,7 @@ export function ReadingScene({
 
         {/* Popoverlar */}
         {rail && (
-          <div className="fixed right-24 top-1/2 z-30 -translate-y-1/2">
+          <div className="anim-pop fixed inset-x-4 bottom-52 z-30 md:inset-x-auto md:bottom-auto md:right-24 md:top-1/2 md:-translate-y-1/2">
             {rail === "type" && (
               <Popover title={t("read.typography")} onClose={() => setRail(null)}>
                 <p className="text-xs text-white/50">{t("read.script")}</p>
@@ -489,7 +489,7 @@ export function ReadingScene({
 
         {/* Pastdagi suzuvchi boshqaruv */}
         <footer
-          className={`px-8 pb-8 transition-opacity duration-500 ${fade}`}
+          className={`px-4 pb-6 transition-opacity duration-500 sm:px-8 sm:pb-8 ${fade}`}
         >
           <div className="flex items-center justify-center">
             <div className="flex items-center gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur-md">
@@ -507,7 +507,7 @@ export function ReadingScene({
                 type="button"
                 onClick={player.toggle}
                 aria-label={player.playing ? "pause" : "play"}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-night-base transition hover:bg-brand"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-night-base transition hover:bg-brand active:scale-90"
               >
                 <Icon
                   name={player.playing ? "pause" : "play"}

@@ -18,7 +18,7 @@ export function TopBar({
   const { locale, setLocale } = useApp();
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-line bg-surface-subtle/90 px-8 backdrop-blur">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-surface-subtle/90 px-4 backdrop-blur sm:gap-4 sm:px-8">
       <h1 className="text-sm font-semibold text-ink">{title}</h1>
 
       <div className="ml-auto flex items-center gap-3">
@@ -35,7 +35,7 @@ export function TopBar({
               value={search ?? ""}
               onChange={(e) => onSearch?.(e.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-[280px] rounded-xl border border-line-bold bg-surface pl-10 pr-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand"
+              className="h-10 w-[220px] rounded-xl lg:w-[280px] border border-line-bold bg-surface pl-10 pr-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand"
             />
           </label>
         )}

@@ -34,7 +34,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-night-base/70 p-6 backdrop-blur-md"
+      className="anim-fade-in fixed inset-0 z-50 flex items-center justify-center bg-night-base/70 p-4 backdrop-blur-md sm:p-6"
       onMouseDown={(e) => {
         if (!panel.current?.contains(e.target as Node)) onClose();
       }}
@@ -44,7 +44,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`flex max-h-[86vh] w-full ${maxW} flex-col overflow-hidden rounded-2xl border border-white/10 bg-night-panel/95 text-white shadow-panel`}
+        className={`anim-pop flex max-h-[86vh] w-full ${maxW} flex-col overflow-hidden rounded-2xl border border-white/10 bg-night-panel/95 text-white shadow-panel`}
       >
         <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
           <div className="min-w-0">

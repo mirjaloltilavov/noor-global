@@ -31,7 +31,7 @@ export function Popover({
       role="dialog"
       aria-label={title}
       className={[
-        "w-[320px] rounded-2xl border border-white/10 bg-night-panel/95 p-5 text-white shadow-panel backdrop-blur-md",
+        "w-full rounded-2xl border border-white/10 bg-night-panel/95 p-5 text-white shadow-panel backdrop-blur-md md:w-[320px]",
         className,
       ].join(" ")}
     >
