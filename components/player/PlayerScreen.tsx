@@ -1,27 +1,27 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Onboarding } from "@/components/player/Onboarding";
 import { SidePanel, type PanelTab } from "@/components/player/SidePanel";
 import { VibeChip } from "@/components/player/VibeChip";
 import { Stage } from "@/components/sakinah/Stage";
-import { NavRail } from "@/components/shell/NavRail";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import {
+  BISMILLAH_AYAH,
+  BISMILLAH_SURAH,
+  BISMILLAH_TEXT,
   extendPlan,
   flattenTracks,
+  needsBismillah,
   planSegments,
   surahPlan,
   totalMinutes,
   type Segment,
+  type Track,
 } from "@/lib/queue";
-import {
-  SURAHS,
-  audioUrl,
-  getMood,
-  type MoodId,
-} from "@/lib/sakinah";
+import { SURAHS, audioUrl, getMood, type MoodId } from "@/lib/sakinah";
 import {
   ARABIC_SIZES,
   RATES,
@@ -32,7 +32,14 @@ import { prefetchPassage, useChapters, usePassage } from "@/lib/useQuran";
 
 const REPEATS: RepeatMode[] = ["off", "ayah", "segment"];
 
+/** Kursor — navbatdagi o'rin va shu o'rinda Bismillah kutilayotgani */
+interface Cursor {
+  pos: number;
+  bismillah: boolean;
+}
+
 export function PlayerScreen() {
+  const router = useRouter();
   const {
     t,
     ln,
@@ -47,7 +54,7 @@ export function PlayerScreen() {
   } = useApp();
 
   const [segments, setSegments] = useState<Segment[]>([]);
-  const [pos, setPos] = useState(0);
+  const [cursor, setCursor] = useState<Cursor>({ pos: 0, bismillah: false });
   const [playing, setPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [clipLength, setClipLength] = useState(0);
@@ -59,6 +66,7 @@ export function PlayerScreen() {
   const chapters = useChapters(locale);
 
   const tracks = useMemo(() => flattenTracks(segments), [segments]);
+  const pos = cursor.pos;
   const track = tracks[pos] ?? null;
   const segIndex = track?.segment ?? 0;
   const segment = segments[segIndex] ?? null;
@@ -73,13 +81,27 @@ export function PlayerScreen() {
   );
   const ayah = ayahs?.find((a) => a.ayah === track?.ayah) ?? null;
 
+  /* ——— Kursorni surish ————————————————————————————————
+     Bismillah kerakmi — o'rin bilan birga hisoblanadi, shunda
+     audio manbasi bir zumga ham noto'g'ri bo'lib qolmaydi. */
+
+  const moveTo = useCallback(
+    (nextPos: number, segs: Segment[] = segments, trs: Track[] = tracks) => {
+      setCursor({
+        pos: nextPos,
+        bismillah: needsBismillah(segs, trs, nextPos),
+      });
+    },
+    [segments, tracks]
+  );
+
   /* ——— Rejimni boshlash ——————————————————————————————— */
 
   const startVibe = useCallback(
     (mood: MoodId) => {
       const segs = planSegments(getMood(mood), prefs.duration);
       setSegments(segs);
-      setPos(0);
+      moveTo(0, segs, flattenTracks(segs));
       setVibe({
         mood,
         startedAt: Date.now(),
@@ -89,32 +111,41 @@ export function PlayerScreen() {
       setFinished(false);
       setPlaying(true);
     },
-    [prefs.duration, setVibe]
+    [prefs.duration, setVibe, moveTo]
   );
 
-  const startSurah = useCallback((surah: number, verses: number) => {
-    setSegments(surahPlan(surah, verses));
-    setPos(0);
-  }, []);
+  const startSurah = useCallback(
+    (surah: number, verses: number) => {
+      const segs = surahPlan(surah, verses);
+      setSegments(segs);
+      moveTo(0, segs, flattenTracks(segs));
+    },
+    [moveTo]
+  );
 
   // Birinchi yuklanish
   useEffect(() => {
     if (!ready || segments.length > 0) return;
 
     if (vibe && !vibe.done) {
-      setSegments(planSegments(getMood(vibe.mood), vibe.minutes));
-      setPos(0);
+      const segs = planSegments(getMood(vibe.mood), vibe.minutes);
+      setSegments(segs);
+      moveTo(0, segs, flattenTracks(segs));
+      setPlaying(true);
     } else {
       startSurah(1, SURAHS[1].verses);
+      if (!prefs.onboarded) setOnboarding(true);
     }
-
-    if (!prefs.onboarded) setOnboarding(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
   /* ——— Audio ——————————————————————————————————————— */
 
-  const src = track ? audioUrl(prefs.reciter, track.surah, track.ayah) : "";
+  const src = cursor.bismillah
+    ? audioUrl(prefs.reciter, BISMILLAH_SURAH, BISMILLAH_AYAH)
+    : track
+      ? audioUrl(prefs.reciter, track.surah, track.ayah)
+      : "";
 
   useEffect(() => {
     const el = audioRef.current;
@@ -158,11 +189,12 @@ export function PlayerScreen() {
       mood: vibe.mood,
       refs: segments
         .filter((s) => s.kind === "vibe")
-        .map((s) =>
-          s.from === s.to
-            ? `${SURAHS[s.surah]?.slug ?? s.surah} ${s.surah}:${s.from}`
-            : `${SURAHS[s.surah]?.slug ?? s.surah} ${s.surah}:${s.from}–${s.to}`
-        ),
+        .map((s) => {
+          const name = SURAHS[s.surah]?.slug ?? `Surah ${s.surah}`;
+          return s.from === s.to
+            ? `${name} ${s.surah}:${s.from}`
+            : `${name} ${s.surah}:${s.from}–${s.to}`;
+        }),
       minutes: totalMinutes(segments),
     });
   }, [vibe, segments, setVibe, pushHistory]);
@@ -172,9 +204,9 @@ export function PlayerScreen() {
 
     if (next < tracks.length) {
       if (prefs.repeat === "segment" && tracks[next].segment !== segIndex) {
-        setPos(tracks.findIndex((x) => x.segment === segIndex));
+        moveTo(tracks.findIndex((x) => x.segment === segIndex));
       } else {
-        setPos(next);
+        moveTo(next);
       }
       return;
     }
@@ -182,8 +214,9 @@ export function PlayerScreen() {
     // Navbat tugadi
     if (inVibe && vibe) {
       if (vibe.minutes === 0) {
-        setSegments(extendPlan(getMood(vibe.mood), segments));
-        setPos(next);
+        const grown = extendPlan(getMood(vibe.mood), segments);
+        setSegments(grown);
+        moveTo(next, grown, flattenTracks(grown));
         return;
       }
       finishSession();
@@ -207,6 +240,7 @@ export function PlayerScreen() {
     segment,
     chapters,
     startSurah,
+    moveTo,
   ]);
 
   const goPrev = useCallback(() => {
@@ -216,10 +250,16 @@ export function PlayerScreen() {
       el.currentTime = 0;
       return;
     }
-    setPos((p) => Math.max(0, p - 1));
-  }, []);
+    moveTo(Math.max(0, pos - 1));
+  }, [pos, moveTo]);
 
   function handleEnded() {
+    // Bismillah tugadi — endi oyatning o'zi
+    if (cursor.bismillah) {
+      setCursor((c) => ({ ...c, bismillah: false }));
+      return;
+    }
+
     if (prefs.repeat === "ayah") {
       const el = audioRef.current;
       if (el) {
@@ -250,10 +290,11 @@ export function PlayerScreen() {
 
   function continueSession() {
     if (!vibe) return;
-    setSegments((prev) => extendPlan(getMood(vibe.mood), prev, 20));
+    const grown = extendPlan(getMood(vibe.mood), segments, 20);
+    setSegments(grown);
     setVibe({ ...vibe, done: false });
     setFinished(false);
-    setPos((p) => p + 1);
+    moveTo(pos + 1, grown, flattenTracks(grown));
     setPlaying(true);
   }
 
@@ -261,7 +302,8 @@ export function PlayerScreen() {
     // Pleyerdan chiqmaymiz — oddiy rejimga o'tamiz, vibe burchakda qoladi
     setFinished(false);
     const surah = segment?.surah ?? 1;
-    const verses = SURAHS[surah]?.verses ?? chapters.find((c) => c.id === surah)?.verses ?? 7;
+    const verses =
+      SURAHS[surah]?.verses ?? chapters.find((c) => c.id === surah)?.verses ?? 7;
     startSurah(surah, verses);
     setPanel("surahs");
   }
@@ -271,10 +313,17 @@ export function PlayerScreen() {
   const showTranslation = prefs.showTranslation && prefs.format === "both";
   const showTransliteration =
     prefs.showTransliteration && prefs.format === "both";
-  const arabicText =
-    prefs.script === "indopak" ? ayah?.indopak ?? "" : ayah?.uthmani ?? "";
+  const arabicText = cursor.bismillah
+    ? BISMILLAH_TEXT
+    : prefs.script === "indopak"
+      ? ayah?.indopak ?? ""
+      : ayah?.uthmani ?? "";
   const fontPx = ARABIC_SIZES[Math.min(prefs.fontSize, ARABIC_SIZES.length) - 1];
-  const surahName = segment ? SURAHS[segment.surah]?.slug ?? chapters.find((c) => c.id === segment.surah)?.slug ?? "" : "";
+  const surahName = segment
+    ? SURAHS[segment.surah]?.slug ??
+      chapters.find((c) => c.id === segment.surah)?.slug ??
+      ""
+    : "";
   const clipProgress = clipLength > 0 ? elapsed / clipLength : 0;
   const vibeDone = segments.filter(
     (s, i) => s.kind === "vibe" && i < segIndex
@@ -282,97 +331,102 @@ export function PlayerScreen() {
   const vibeTotal = segments.filter((s) => s.kind === "vibe").length;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-night-base">
-      <NavRail />
+    <Stage
+      background={prefs.background}
+      brightness={prefs.brightness}
+      reduceMotion={prefs.reduceMotion}
+    >
+      <div className="flex h-screen">
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Yuqori qator */}
+          <header className="flex items-center justify-between gap-4 px-8 py-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.push("/sakinah")}
+                aria-label={t("common.back")}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/80 transition hover:bg-white/15"
+              >
+                <Icon name="arrowLeft" size={18} />
+              </button>
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-wide text-white/40">
+                  {cursor.bismillah ? "Bismillah" : t("player.nowPlaying")}
+                </p>
+                <h1 className="truncate text-lg font-semibold text-white">
+                  {surahName}
+                  {track && (
+                    <span className="ml-2 font-normal text-white/55">
+                      {track.surah}:{track.ayah}
+                    </span>
+                  )}
+                </h1>
+              </div>
+            </div>
 
-      <div className="relative ml-[88px] flex-1">
-        <Stage
-          background={prefs.background}
-          brightness={prefs.brightness}
-          reduceMotion={prefs.reduceMotion}
-          className="!min-h-0 h-full"
-        >
-          <div className="flex h-screen">
-            <div className="flex min-w-0 flex-1 flex-col">
-              {/* Yuqori qator */}
-              <header className="flex items-center justify-between gap-4 px-8 py-5">
-                <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-white/40">
-                    {t("player.nowPlaying")}
-                  </p>
-                  <h1 className="truncate text-lg font-semibold text-white">
-                    {surahName}
-                    {track && (
-                      <span className="ml-2 font-normal text-white/55">
-                        {track.surah}:{track.ayah}
-                      </span>
-                    )}
-                  </h1>
-                </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOnboarding(true)}
+                className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 text-sm text-white/85 transition hover:bg-white/15"
+              >
+                <Icon name="sakinah" size={16} />
+                {t("onboard.open")}
+              </button>
+              <PanelButton
+                icon="quran"
+                label={t("player.surahs")}
+                active={panel === "surahs"}
+                onClick={() => setPanel(panel === "surahs" ? null : "surahs")}
+              />
+              <PanelButton
+                icon="layers"
+                label={t("player.queue")}
+                active={panel === "queue"}
+                onClick={() => setPanel(panel === "queue" ? null : "queue")}
+              />
+              <PanelButton
+                icon="settings"
+                label={t("player.settings")}
+                active={panel === "settings"}
+                onClick={() =>
+                  setPanel(panel === "settings" ? null : "settings")
+                }
+              />
+            </div>
+          </header>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setOnboarding(true)}
-                    className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 text-sm text-white/85 transition hover:bg-white/15"
+          {/* Matn */}
+          <main className="flex flex-1 items-center justify-center overflow-y-auto px-10">
+            <div className="w-full max-w-4xl py-8 text-center">
+              {loading && !cursor.bismillah && (
+                <p className="text-sm text-white/45">{t("common.loading")}</p>
+              )}
+              {error && !cursor.bismillah && (
+                <p className="text-sm text-white/70">{t("common.error")}</p>
+              )}
+
+              {(ayah || cursor.bismillah) && (
+                <>
+                  <p
+                    className="arabic font-arabic text-white"
+                    style={{
+                      fontSize: `${fontPx}px`,
+                      lineHeight: prefs.lineHeight,
+                    }}
                   >
-                    <Icon name="sakinah" size={16} />
-                    {t("onboard.open")}
-                  </button>
-                  <PanelButton
-                    icon="quran"
-                    label={t("player.surahs")}
-                    active={panel === "surahs"}
-                    onClick={() =>
-                      setPanel(panel === "surahs" ? null : "surahs")
-                    }
-                  />
-                  <PanelButton
-                    icon="layers"
-                    label={t("player.queue")}
-                    active={panel === "queue"}
-                    onClick={() => setPanel(panel === "queue" ? null : "queue")}
-                  />
-                  <PanelButton
-                    icon="settings"
-                    label={t("player.settings")}
-                    active={panel === "settings"}
-                    onClick={() =>
-                      setPanel(panel === "settings" ? null : "settings")
-                    }
-                  />
-                </div>
-              </header>
+                    {arabicText}
+                  </p>
 
-              {/* Matn */}
-              <main className="flex flex-1 items-center justify-center overflow-y-auto px-10">
-                <div className="w-full max-w-4xl py-8 text-center">
-                  {loading && (
-                    <p className="text-sm text-white/45">{t("common.loading")}</p>
-                  )}
-                  {error && (
-                    <p className="text-sm text-white/70">{t("common.error")}</p>
-                  )}
-
-                  {ayah && (
+                  {!cursor.bismillah && (
                     <>
-                      <p
-                        className="arabic font-arabic text-white"
-                        style={{
-                          fontSize: `${fontPx}px`,
-                          lineHeight: prefs.lineHeight,
-                        }}
-                      >
-                        {arabicText}
-                      </p>
-
-                      {showTransliteration && ayah.transliteration && (
+                      {showTransliteration && ayah?.transliteration && (
                         <p className="mt-6 text-sm italic text-white/40">
                           {ayah.transliteration}
                         </p>
                       )}
 
-                      {showTranslation && ayah.translation && (
+                      {showTranslation && ayah?.translation && (
                         <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/70">
                           {ayah.translation}
                         </p>
@@ -385,150 +439,150 @@ export function PlayerScreen() {
                       )}
                     </>
                   )}
-                </div>
-              </main>
-
-              {/* Pleyer */}
-              <footer className="px-8 pb-6">
-                <div className="mx-auto max-w-3xl">
-                  <ProgressBar
-                    value={clipProgress}
-                    elapsed={elapsed}
-                    total={clipLength}
-                    onSeek={seekTo}
-                  />
-
-                  <div className="mt-4 flex items-center justify-center gap-3">
-                    <RateButton
-                      rate={prefs.rate}
-                      onChange={(r) => setPrefs({ rate: r })}
-                    />
-
-                    <RoundButton icon="arrowLeft" label="prev" onClick={goPrev} />
-                    <RoundButton
-                      icon="back10"
-                      label="-10"
-                      onClick={() => seekBy(-10)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setPlaying((p) => !p)}
-                      aria-label={playing ? "pause" : "play"}
-                      className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-night-base transition hover:bg-brand"
-                    >
-                      <Icon
-                        name={playing ? "pause" : "play"}
-                        size={20}
-                        filled={!playing}
-                      />
-                    </button>
-                    <RoundButton
-                      icon="forward10"
-                      label="+10"
-                      onClick={() => seekBy(10)}
-                    />
-                    <RoundButton icon="arrowRight" label="next" onClick={goNext} />
-
-                    <RepeatButton
-                      mode={prefs.repeat}
-                      onChange={(m) => setPrefs({ repeat: m })}
-                    />
-                  </div>
-
-                  <p className="mt-3 text-center text-[11px] text-white/30">
-                    {segments.length > 0 &&
-                      t("player.segmentOf", {
-                        i: segIndex + 1,
-                        n: segments.length,
-                      })}
-                  </p>
-                </div>
-              </footer>
+                </>
+              )}
             </div>
+          </main>
 
-            {panel && (
-              <SidePanel
-                tab={panel}
-                onTab={setPanel}
-                onClose={() => setPanel(null)}
-                segments={segments}
-                activeSegment={segIndex}
-                onSelectSegment={(i) => {
-                  const start = tracks.findIndex((x) => x.segment === i);
-                  if (start >= 0) setPos(start);
-                }}
-                chapters={chapters}
-                currentSurah={segment?.surah ?? 1}
-                onSelectSurah={(surah, verses) => {
-                  startSurah(surah, verses);
-                  setPlaying(true);
-                }}
+          {/* Pleyer */}
+          <footer className="px-8 pb-6">
+            <div className="mx-auto max-w-3xl">
+              <ProgressBar
+                value={clipProgress}
+                elapsed={elapsed}
+                total={clipLength}
+                onSeek={seekTo}
               />
-            )}
-          </div>
 
-          {/* Burchakdagi vibe bo'limchasi */}
-          {vibe && (
-            <VibeChip
-              mood={vibe.mood}
-              minutes={vibe.minutes}
-              active={inVibe}
-              done={vibeDone}
-              total={vibeTotal}
-              onRetune={() => setOnboarding(true)}
-              onRestart={() => startVibe(vibe.mood)}
-              onExit={() => {
-                setVibe(null);
-                const surah = segment?.surah ?? 1;
-                startSurah(
-                  surah,
-                  SURAHS[surah]?.verses ??
-                    chapters.find((c) => c.id === surah)?.verses ??
-                    7
-                );
-              }}
-            />
-          )}
-        </Stage>
+              <div className="mt-4 flex items-center justify-center gap-3">
+                <RateButton
+                  rate={prefs.rate}
+                  onChange={(r) => setPrefs({ rate: r })}
+                />
 
-        <audio
-          ref={audioRef}
-          preload="auto"
-          onEnded={handleEnded}
-          onLoadedMetadata={(e) => setClipLength(e.currentTarget.duration || 0)}
-          onTimeUpdate={(e) => setElapsed(e.currentTarget.currentTime)}
-          onError={() => setPlaying(false)}
-        />
+                <RoundButton icon="arrowLeft" label="prev" onClick={goPrev} />
+                <RoundButton
+                  icon="back10"
+                  label="-10"
+                  onClick={() => seekBy(-10)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setPlaying((p) => !p)}
+                  aria-label={playing ? "pause" : "play"}
+                  className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-night-base transition hover:bg-brand"
+                >
+                  <Icon
+                    name={playing ? "pause" : "play"}
+                    size={20}
+                    filled={!playing}
+                  />
+                </button>
+                <RoundButton
+                  icon="forward10"
+                  label="+10"
+                  onClick={() => seekBy(10)}
+                />
+                <RoundButton icon="arrowRight" label="next" onClick={goNext} />
 
-        {onboarding && (
-          <Onboarding
-            initialMood={vibe?.mood ?? null}
-            dismissible={prefs.onboarded}
-            onBegin={(mood) => {
-              setPrefs({ onboarded: true });
-              setOnboarding(false);
-              startVibe(mood);
+                <RepeatButton
+                  mode={prefs.repeat}
+                  onChange={(m) => setPrefs({ repeat: m })}
+                />
+              </div>
+
+              <p className="mt-3 text-center text-[11px] text-white/30">
+                {segments.length > 0 &&
+                  t("player.segmentOf", {
+                    i: segIndex + 1,
+                    n: segments.length,
+                  })}
+              </p>
+            </div>
+          </footer>
+        </div>
+
+        {panel && (
+          <SidePanel
+            tab={panel}
+            onTab={setPanel}
+            onClose={() => setPanel(null)}
+            segments={segments}
+            activeSegment={segIndex}
+            onSelectSegment={(i) => {
+              const start = tracks.findIndex((x) => x.segment === i);
+              if (start >= 0) moveTo(start);
             }}
-            onSkip={() => {
-              setPrefs({ onboarded: true });
-              setOnboarding(false);
-              setVibe(null);
-              startSurah(1, SURAHS[1].verses);
+            chapters={chapters}
+            currentSurah={segment?.surah ?? 1}
+            onSelectSurah={(surah, verses) => {
+              startSurah(surah, verses);
+              setPlaying(true);
             }}
-            onClose={() => setOnboarding(false)}
-          />
-        )}
-
-        {finished && vibe && (
-          <FinishPrompt
-            moodLabel={ln(getMood(vibe.mood).label)}
-            minutes={totalMinutes(segments)}
-            onContinue={continueSession}
-            onEnd={endSession}
           />
         )}
       </div>
-    </div>
+
+      {/* Burchakdagi vibe bo'limchasi */}
+      {vibe && (
+        <VibeChip
+          mood={vibe.mood}
+          minutes={vibe.minutes}
+          active={inVibe}
+          done={vibeDone}
+          total={vibeTotal}
+          onRetune={() => setOnboarding(true)}
+          onRestart={() => startVibe(vibe.mood)}
+          onExit={() => {
+            setVibe(null);
+            const surah = segment?.surah ?? 1;
+            startSurah(
+              surah,
+              SURAHS[surah]?.verses ??
+                chapters.find((c) => c.id === surah)?.verses ??
+                7
+            );
+          }}
+        />
+      )}
+
+      <audio
+        ref={audioRef}
+        preload="auto"
+        onEnded={handleEnded}
+        onLoadedMetadata={(e) => setClipLength(e.currentTarget.duration || 0)}
+        onTimeUpdate={(e) => setElapsed(e.currentTarget.currentTime)}
+        onError={() => setPlaying(false)}
+      />
+
+      {onboarding && (
+        <Onboarding
+          initialMood={vibe?.mood ?? null}
+          dismissible={prefs.onboarded}
+          onBegin={(mood) => {
+            setPrefs({ onboarded: true });
+            setOnboarding(false);
+            startVibe(mood);
+          }}
+          onSkip={() => {
+            setPrefs({ onboarded: true });
+            setOnboarding(false);
+            setVibe(null);
+            startSurah(1, SURAHS[1].verses);
+          }}
+          onClose={() => setOnboarding(false)}
+        />
+      )}
+
+      {finished && vibe && (
+        <FinishPrompt
+          moodLabel={ln(getMood(vibe.mood).label)}
+          minutes={totalMinutes(segments)}
+          onContinue={continueSession}
+          onEnd={endSession}
+        />
+      )}
+    </Stage>
   );
 }
 
@@ -705,7 +759,9 @@ function RepeatButton({
   return (
     <button
       type="button"
-      onClick={() => onChange(REPEATS[(REPEATS.indexOf(mode) + 1) % REPEATS.length])}
+      onClick={() =>
+        onChange(REPEATS[(REPEATS.indexOf(mode) + 1) % REPEATS.length])
+      }
       aria-label={t("player.repeat")}
       className={[
         "h-9 rounded-full px-3 text-xs font-semibold transition",

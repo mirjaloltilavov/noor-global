@@ -17,25 +17,41 @@ Keyingi bosqichda oqim pleyer atrofida qayta yig'ildi.
 
 ### Oqim
 
-Butun tajriba bitta ekranda — `/sakinah` (pleyer). `/player` ham shu yerga
-yo'naltiradi.
+`/sakinah` — uy sahifasi, `/sakinah/player` — full-screen pleyer.
+`/player` ham pleyerga yo'naltiradi.
 
-1. **Onboarding** — pleyer ustidagi overlay: kayfiyat (6 ta), davomiylik
-   (10 / 30 / 45 daqiqa yoki cheksiz), format (tinglash yoki tinglash + o'qish),
-   qori. «Kayfiyatsiz, oddiy pleyer» bilan o'tkazib yuborsa ham bo'ladi.
-2. **Navbat** — tanlangan daqiqaga qarab tuziladi: avval kayfiyat bo'yicha
+1. **Uy sahifasi** — hero, «Boshlash», standart qorini tanlash, so'nggi
+   sessiyalar (qidiruv va «Takrorlash» bilan), tugallanmagan sessiya banneri.
+2. **Onboarding** — «Boshlash»dan keyin chiqadigan overlay: kayfiyat (6 ta),
+   davomiylik (10 / 30 / 45 daqiqa yoki cheksiz), format (tinglash yoki
+   tinglash + o'qish), qori. «Kayfiyatsiz, oddiy pleyer» bilan o'tkazib
+   yuborsa ham bo'ladi. Tanlangach full-screen pleyer ochiladi.
+3. **Navbat** — tanlangan daqiqaga qarab tuziladi: avval kayfiyat bo'yicha
    kuratsiya qilingan parchalar, vaqt yetmasa o'sha suralarning davomi
    bo'laklarga bo'linib qo'shiladi. Cheksiz rejimda navbat tugashiga yaqin
    o'zi uzayadi.
-3. **Pleyer** — arabcha matn, tarjima, transliteratsiya; boshqaruv
+4. **Pleyer** — arabcha matn, tarjima, transliteratsiya; boshqaruv
    (⟵ · −10s · play · +10s · ⟶), tezlik, takrorlash (o'chiq / oyat / parcha),
    oyat ichida seek. Yon panel: **Navbat · Suralar · Sozlamalar**
    (114 sura + qidiruv, qori, tarjimon, yozuv, o'lcham, fon, yorqinlik).
-4. **Sessiya yakuni** — «davom ettiramizmi?» so'raladi.
+5. **Sessiya yakuni** — «davom ettiramizmi?» so'raladi.
    *Ha* — navbat uzayadi va tilovat davom etadi.
    *Yo'q* — pleyerdan chiqilmaydi: oddiy rejimga o'tadi, sura ro'yxati ochiladi,
    vibe sessiyasi esa pastki chap burchakda bo'limcha bo'lib qoladi
    (qayta sozlash · qaytadan boshlash · chiqish).
+
+### Bismillah
+
+Har yangi sura Bismillah bilan boshlanadi. An'anaviy qoidaga amal qilinadi:
+
+- **Tavba (9-sura)** oldidan Bismillah aytilmaydi;
+- **Fotiha**da Bismillah 1-oyatning o'zi, shuning uchun qo'shimcha aytilmaydi;
+- kayfiyat bo'yicha tanlangan **har bir yangi parcha** Bismillah bilan boshlanadi;
+- bir sura ichida ketma-ket oyatlar to'xtovsiz o'qiladi.
+
+Audio sifatida o'sha qorining Fotiha 1-oyati ishlatiladi, matn esa ekranda
+«Bismillah» belgisi bilan ko'rsatiladi. Qoida `needsBismillah()` da —
+`lib/queue.ts`.
 
 ### O'qish fonlari
 
@@ -78,7 +94,8 @@ http://localhost:3000 — `/sakinah` ga yo'naltiradi.
 
 ```
 app/
-  sakinah/            pleyer sahifasi (asosiy ekran)
+  sakinah/            uy sahifasi (hero · qori · so'nggi sessiyalar)
+  sakinah/player/     full-screen pleyer
   api/passage/        oyat matni + tarjima (kesh bilan)
   api/chapters/       114 sura ro'yxati
   quran|hadith|...    'tez orada' sahifalari

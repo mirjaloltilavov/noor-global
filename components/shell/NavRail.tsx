@@ -15,7 +15,7 @@ interface NavItem {
 const ITEMS: NavItem[] = [
   { href: "/quran", icon: "quran", labelKey: "nav.quran", soon: true },
   { href: "/sakinah", icon: "sakinah", labelKey: "nav.sakinah" },
-  { href: "/player", icon: "player", labelKey: "nav.player", soon: true },
+  { href: "/sakinah/player", icon: "player", labelKey: "nav.player" },
   { href: "/hadith", icon: "hadith", labelKey: "nav.hadith", soon: true },
   { href: "/ai", icon: "ai", labelKey: "nav.ai", soon: true },
   { href: "/tafsir", icon: "tafsir", labelKey: "nav.tafsir", soon: true },
@@ -41,7 +41,8 @@ export function NavRail() {
 
       <ul className="mt-6 flex w-16 flex-col gap-1">
         {ITEMS.map((item) => {
-          const active = pathname.startsWith(item.href);
+          // /sakinah va /sakinah/player alohida bo'limlar — aniq moslik
+          const active = pathname === item.href;
           return (
             <li key={item.href}>
               <Link

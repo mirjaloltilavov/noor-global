@@ -130,15 +130,56 @@ export function surahPlan(surah: number, verses: number): Segment[] {
   return out;
 }
 
+export interface Track {
+  surah: number;
+  ayah: number;
+  segment: number;
+}
+
 /** Navbatdagi barcha oyatlar ro'yxati — pleyer shular bo'ylab yuradi */
-export function flattenTracks(
-  segments: Segment[]
-): { surah: number; ayah: number; segment: number }[] {
-  const out: { surah: number; ayah: number; segment: number }[] = [];
+export function flattenTracks(segments: Segment[]): Track[] {
+  const out: Track[] = [];
   segments.forEach((s, si) => {
     for (let a = s.from; a <= s.to; a++) {
       out.push({ surah: s.surah, ayah: a, segment: si });
     }
   });
   return out;
+}
+
+/** Bismillahning arabcha matni */
+export const BISMILLAH_TEXT = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ";
+
+/** Bismillah audiosi — Fotihaning 1-oyati */
+export const BISMILLAH_SURAH = 1;
+export const BISMILLAH_AYAH = 1;
+
+/**
+ * Shu o'rinda Bismillah aytiladimi?
+ *
+ * An'anaviy qoida:
+ * — Tavba (9) surasi oldidan Bismillah aytilmaydi;
+ * — Fotihada Bismillah 1-oyatning o'zi, shuning uchun qo'shimcha aytilmaydi;
+ * — kayfiyat bo'yicha tanlangan har bir yangi parcha Bismillah bilan boshlanadi;
+ * — qolgan hollarda faqat sura almashganda aytiladi.
+ */
+export function needsBismillah(
+  segments: Segment[],
+  tracks: Track[],
+  pos: number
+): boolean {
+  const track = tracks[pos];
+  if (!track) return false;
+
+  const segment = segments[track.segment];
+  if (!segment) return false;
+
+  // Faqat parchaning birinchi oyatida
+  if (track.ayah !== segment.from) return false;
+
+  if (segment.surah === 9 || segment.surah === 1) return false;
+
+  if (segment.kind === "vibe") return true;
+
+  return tracks[pos - 1]?.surah !== segment.surah;
 }
