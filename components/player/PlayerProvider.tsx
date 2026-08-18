@@ -44,6 +44,8 @@ interface PlayerValue {
   finished: boolean;
 
   ayah: Ayah | null;
+  /** Joriy parchadagi barcha oyatlar */
+  ayahs: Ayah[] | null;
   loading: boolean;
   error: boolean;
   /** Karaoke uchun — hozir o'qilayotgan so'z tartibi (0 dan), yo'q bo'lsa -1 */
@@ -52,6 +54,14 @@ interface PlayerValue {
   /** Pleyer fonda — sayt interfeysi ko'rinadi, tilovat davom etadi */
   minimized: boolean;
   setMinimized: (v: boolean) => void;
+  /** Uyqu taymeri (daqiqa, 0 — o'chiq) */
+  sleepMinutes: number;
+  setSleepMinutes: (m: number) => void;
+  /** Qolgan vaqt (soniya) */
+  sleepLeft: number;
+  /** 0–1 */
+  volume: number;
+  setVolume: (v: number) => void;
 
   play: () => void;
   pause: () => void;
@@ -61,6 +71,8 @@ interface PlayerValue {
   seekBy: (delta: number) => void;
   seekTo: (fraction: number) => void;
   jumpToSegment: (index: number) => void;
+  /** Navbatdagi aniq oyatga o'tish (track indeksi) */
+  jumpToAyah: (trackIndex: number) => void;
 
   startVibe: (mood: MoodId) => void;
   startSurah: (surah: number, verses: number) => void;
@@ -88,6 +100,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [clipLength, setClipLength] = useState(0);
   const [finished, setFinished] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [sleepMinutes, setSleepMinutesState] = useState(0);
+  const [sleepDeadline, setSleepDeadline] = useState<number | null>(null);
+  const [sleepLeft, setSleepLeft] = useState(0);
+  const [volume, setVolumeState] = useState(1);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chapters = useChapters(locale);
@@ -145,6 +161,32 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = prefs.rate;
   }, [prefs.rate]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
+
+  /* ——— Uyqu taymeri ——————————————————————————————— */
+
+  const setSleepMinutes = useCallback((m: number) => {
+    setSleepMinutesState(m);
+    setSleepDeadline(m > 0 ? Date.now() + m * 60_000 : null);
+    setSleepLeft(m * 60);
+  }, []);
+
+  useEffect(() => {
+    if (sleepDeadline === null) return;
+    const id = window.setInterval(() => {
+      const left = Math.max(0, Math.round((sleepDeadline - Date.now()) / 1000));
+      setSleepLeft(left);
+      if (left === 0) {
+        setPlaying(false);
+        setSleepDeadline(null);
+        setSleepMinutesState(0);
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [sleepDeadline]);
 
   // Keyingi parcha oldindan yuklanadi
   useEffect(() => {
@@ -320,6 +362,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [tracks, moveTo]
   );
 
+  const jumpToAyah = useCallback(
+    (trackIndex: number) => {
+      if (trackIndex >= 0 && trackIndex < tracks.length) moveTo(trackIndex);
+    },
+    [tracks, moveTo]
+  );
+
   const continueSession = useCallback(() => {
     if (!vibe) return;
     const grown = extendPlan(getMood(vibe.mood), segments, 20);
@@ -361,11 +410,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       chapters,
       finished,
       ayah,
+      ayahs: ayahs ?? null,
       loading,
       error,
       wordIndex,
       minimized,
       setMinimized,
+      sleepMinutes,
+      setSleepMinutes,
+      sleepLeft,
+      volume,
+      setVolume: setVolumeState,
       play: () => setPlaying(true),
       pause: () => setPlaying(false),
       toggle: () => setPlaying((p) => !p),
@@ -374,6 +429,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       seekBy,
       seekTo,
       jumpToSegment,
+      jumpToAyah,
       startVibe,
       startSurah,
       continueSession,
@@ -393,15 +449,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       chapters,
       finished,
       ayah,
+      ayahs,
       loading,
       error,
       wordIndex,
       minimized,
+      sleepMinutes,
+      setSleepMinutes,
+      sleepLeft,
+      volume,
       next,
       prev,
       seekBy,
       seekTo,
       jumpToSegment,
+      jumpToAyah,
       startVibe,
       startSurah,
       continueSession,

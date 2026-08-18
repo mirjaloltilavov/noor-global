@@ -12,13 +12,20 @@ Keyingi bosqichda oqim pleyer atrofida qayta yig'ildi.
 
 | Bo'lim | Holat |
 | --- | --- |
-| **Sakinah / Pleyer** | To'liq ishlaydi — quyidagi oqim |
-| Qur'on, Pleyer, Hadis, AI suhbat, Tafsir, Daftar | «Tez orada» sahifasi |
+| **Sakinah** (pleyer + kayfiyat sessiyasi) | To'liq ishlaydi — quyidagi oqim |
+| Qur'on, Hadis, AI suhbat, Tafsir, Daftar | «Tez orada» sahifasi |
 
 ### Oqim
 
-Hammasi bitta manzilda — `/sakinah`. Navbat bo'sh bo'lsa uy sahifasi,
-sessiya boshlangach o'sha yerda full-screen o'qish sahnasi ochiladi.
+Hammasi bitta manzilda — `/sakinah`. Navbardagi yagona ijro bo'limi (play
+ikonkasi) shu yerga olib keladi va darhol full-screen pleyer ochiladi.
+Tepadagi tab orqali ikki ko'rinish almashadi:
+
+- **Pleyer** — Figmadagi «Majlis — Ambient Session» (Concept B): chapda
+  sessiya ro'yxati va aylanma progressi, markazda oyatlar (joriysi yorqin,
+  qolganlari so'ngan), o'ngda qori halqasi, so'zma-so'z kartasi, tezlik ·
+  uyqu taymeri · ulashish, pastda oyatlarga bo'lingan vaqt chizig'i.
+- **Sakinah** — kayfiyat sessiyasi (S8–S15 sahnasi).
 
 1. **Uy sahifasi** — hero, «Boshlash», standart qorini tanlash, so'nggi
    sessiyalar (qidiruv va «Takrorlash» bilan), tugallanmagan sessiya banneri.
@@ -127,8 +134,9 @@ app/
   api/chapters/       114 sura ro'yxati
   quran|hadith|...    'tez orada' sahifalari
 components/
-  player/             PlayerProvider · OnboardingFlow · ReadingScene ·
-                      SurahModal · QueueModal · VibeChip · AuraWidget
+  player/             PlayerProvider · FullScreen (tablar) · MajlisView ·
+                      ReadingScene · OnboardingFlow · SurahModal ·
+                      QueueModal · SettingsModal · VibeChip · AuraWidget
   sakinah/            fon sahnasi · popover elementlari
   shell/              nav rail (desktop ustun / mobil panel)
   ui/                 ikonka · modal · select

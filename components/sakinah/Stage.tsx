@@ -12,13 +12,34 @@ export function Stage({
   reduceMotion,
   children,
   className = "",
+  bare = false,
 }: {
   background: BackgroundId;
   brightness: number;
   reduceMotion: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Fon qatlamlarisiz — tashqi Stage ichida ishlatiladi */
+  bare?: boolean;
 }) {
+  const vars = {
+    "--sk-brightness": brightness / 100,
+    "--sk-accent": TONES[background].accent,
+    "--sk-accent-soft": TONES[background].accentSoft,
+    "--sk-panel": TONES[background].panel,
+  } as React.CSSProperties;
+
+  if (bare) {
+    return (
+      <div
+        className={["flex min-h-0 flex-1 flex-col text-white", className].join(" ")}
+        style={vars}
+      >
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div
       className={[

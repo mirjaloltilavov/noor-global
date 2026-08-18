@@ -30,9 +30,12 @@ const IDLE_MS = 4000;
 export function ReadingScene({
   onExit,
   onRetune,
+  embedded = false,
 }: {
-  onExit: () => void;
+  onExit?: () => void;
   onRetune: () => void;
+  /** FullScreen ichida — o'z sarlavhasi va foni chizilmaydi */
+  embedded?: boolean;
 }) {
   const { t, ln, locale, prefs, setPrefs, translationId, vibe, setVibe } =
     useApp();
@@ -114,10 +117,11 @@ export function ReadingScene({
       background={prefs.background}
       brightness={prefs.brightness}
       reduceMotion={prefs.reduceMotion}
+      bare={embedded}
     >
-      <div className="flex h-screen flex-col">
+      <div className={embedded ? "flex min-h-0 flex-1 flex-col" : "flex h-screen flex-col"}>
         {/* Yuqori qator */}
-        <header
+        {!embedded && <header
           className={`flex items-center justify-between gap-3 px-4 py-5 transition-opacity duration-500 sm:px-8 sm:py-6 ${fade}`}
         >
           <button
@@ -154,7 +158,7 @@ export function ReadingScene({
               <Icon name="close" size={18} />
             </button>
           </div>
-        </header>
+        </header>}
 
         {/* Fazilat maslahati */}
         <div

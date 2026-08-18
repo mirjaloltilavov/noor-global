@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { OnboardingFlow } from "@/components/player/OnboardingFlow";
 import { usePlayer } from "@/components/player/PlayerProvider";
-import { ReadingScene } from "@/components/player/ReadingScene";
+import { FullScreen } from "@/components/player/FullScreen";
 import { useApp } from "@/components/providers/AppProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { TopBar } from "@/components/shell/TopBar";
@@ -18,20 +18,18 @@ export default function SakinahPage() {
 
   return (
     <>
-      {player.active && !player.minimized ? (
-        <ReadingScene
-          onExit={player.closePlayer}
-          onRetune={() => setOnboarding(true)}
-        />
-      ) : (
+      {player.minimized ? (
         <Hub
           onBegin={() => {
-            // Ikkinchi marta — savollarsiz, oxirgi kayfiyat bilan davom etadi
-            if (prefs.onboarded && vibe) player.startVibe(vibe.mood);
-            else setOnboarding(true);
+            player.setMinimized(false);
+            if (!player.active && prefs.onboarded && vibe)
+              player.startVibe(vibe.mood);
+            else if (!player.active) setOnboarding(true);
           }}
           onReconfigure={() => setOnboarding(true)}
         />
+      ) : (
+        <FullScreen onOpenOnboarding={() => setOnboarding(true)} />
       )}
 
       {onboarding && (
