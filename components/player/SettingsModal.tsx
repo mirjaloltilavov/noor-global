@@ -155,6 +155,21 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
               onChange={(v) => setPrefs({ showTransliteration: v })}
             />
           </label>
+          <label className="mt-3 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+            <span>
+              <span className="block text-sm text-white/85">
+                {t("read.wordByWord")}
+              </span>
+              <span className="block text-[11px] text-white/45">
+                {t("read.wordByWordHint")}
+              </span>
+            </span>
+            <Toggle
+              label={t("read.wordByWord")}
+              checked={prefs.wordByWord}
+              onChange={(v) => setPrefs({ wordByWord: v })}
+            />
+          </label>
         </>
       )}
 

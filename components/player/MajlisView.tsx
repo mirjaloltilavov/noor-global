@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AyahText } from "@/components/player/AyahText";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { useApp } from "@/components/providers/AppProvider";
 import { Icon } from "@/components/ui/Icon";
@@ -49,9 +50,6 @@ export function MajlisView({ onEditSession }: { onEditSession: () => void }) {
   const clipProgress =
     player.clipLength > 0 ? player.elapsed / player.clipLength : 0;
   const remaining = Math.max(0, player.clipLength - player.elapsed);
-
-  const currentWord =
-    player.wordIndex >= 0 ? ayah?.words[player.wordIndex] : undefined;
 
   async function shareAyah() {
     if (!ayah) return;
@@ -182,7 +180,7 @@ export function MajlisView({ onEditSession }: { onEditSession: () => void }) {
 
           <div
             ref={centerRef}
-            className="sk-scroll min-h-0 flex-1 overflow-y-auto pb-6 pr-1"
+            className="sk-scroll min-h-0 flex-1 overflow-y-auto pb-6 pl-1 pr-4"
           >
             {cursor.bismillah && (
               <p
@@ -211,36 +209,12 @@ export function MajlisView({ onEditSession }: { onEditSession: () => void }) {
                     </span>
                   )}
 
-                  <p
-                    className="arabic font-arabic leading-relaxed text-white"
-                    style={{
-                      fontSize: `clamp(${Math.round(fontPx * 0.5)}px, 4.2vw, ${
-                        active ? fontPx : Math.round(fontPx * 0.72)
-                      }px)`,
-                      lineHeight: prefs.lineHeight,
-                    }}
-                    dir="rtl"
-                  >
-                    {active && prefs.karaoke && a.segments.length > 0
-                      ? a.words.map((w, i) => (
-                          <span
-                            key={w.position}
-                            className={[
-                              "kw",
-                              i === player.wordIndex
-                                ? "kw-now"
-                                : i < player.wordIndex
-                                  ? "kw-done"
-                                  : "",
-                            ].join(" ")}
-                          >
-                            {prefs.script === "indopak" ? w.indopak : w.uthmani}{" "}
-                          </span>
-                        ))
-                      : prefs.script === "indopak"
-                        ? a.indopak
-                        : a.uthmani}
-                  </p>
+                  <AyahText
+                    ayah={a}
+                    active={active}
+                    wordIndex={player.wordIndex}
+                    fontPx={fontPx}
+                  />
 
                   {active && (
                     <>
@@ -265,39 +239,12 @@ export function MajlisView({ onEditSession }: { onEditSession: () => void }) {
         {/* ——— O'ng: qori va so'zma-so'z ——— */}
         <aside className="hidden w-[250px] shrink-0 flex-col gap-4 xl:flex">
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-5 text-center backdrop-blur-sm">
-            <span className="relative mx-auto block h-[110px] w-[110px]">
-              <svg
-                viewBox="0 0 100 100"
-                className="absolute inset-0 -rotate-90"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="47"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.12)"
-                  strokeWidth="3"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="47"
-                  fill="none"
-                  stroke="var(--sk-accent)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 47}
-                  strokeDashoffset={2 * Math.PI * 47 * (1 - clipProgress)}
-                />
-              </svg>
-              <span className="absolute inset-[10px] flex items-center justify-center rounded-full bg-white/[0.07] text-2xl font-semibold text-white/70">
-                {reciter.name
-                  .split(" ")
-                  .slice(0, 2)
-                  .map((w) => w[0])
-                  .join("")}
-              </span>
+            <span className="mx-auto flex h-[88px] w-[88px] items-center justify-center rounded-full bg-white/[0.07] text-2xl font-semibold text-white/70">
+              {reciter.name
+                .split(" ")
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join("")}
             </span>
 
             <p className="mt-3 text-sm font-semibold text-white">
@@ -307,23 +254,6 @@ export function MajlisView({ onEditSession }: { onEditSession: () => void }) {
               {ln(reciter.style)} · {ln(reciter.place)}
             </p>
 
-            <div className="mt-4 rounded-xl bg-white/[0.05] p-3 text-left">
-              <p className="text-[10px] font-semibold tracking-widest text-white/35">
-                {t("majlis.wordByWord")}
-              </p>
-              {currentWord ? (
-                <>
-                  <p className="arabic mt-1 font-arabic text-2xl text-white">
-                    {currentWord.uthmani}
-                  </p>
-                  <p className="mt-1 text-[11px] text-white/45">
-                    {ayah?.transliteration?.split(" ")[player.wordIndex] ?? ""}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-2 text-xs text-white/35">—</p>
-              )}
-            </div>
           </div>
 
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-2 backdrop-blur-sm">
@@ -423,42 +353,26 @@ export function MajlisView({ onEditSession }: { onEditSession: () => void }) {
             {formatClock(player.elapsed)}
           </span>
 
-          {/* Oyatlarga bo'lingan chiziq */}
-          <div className="flex min-w-[180px] flex-1 items-end gap-1">
-            {(ayahs ?? []).map((a) => {
-              const isCurrent = a.ayah === track.ayah;
-              const isPast = a.ayah < track.ayah;
-              return (
-                <button
-                  key={a.key}
-                  type="button"
-                  aria-label={`${a.surah}:${a.ayah}`}
-                  onClick={() => {
-                    const idx = player.tracks.findIndex(
-                      (x) => x.surah === a.surah && x.ayah === a.ayah
-                    );
-                    if (idx >= 0) player.jumpToAyah(idx);
-                  }}
-                  className="group flex flex-1 flex-col items-center gap-1"
-                >
-                  <span className="text-[9px] tabular-nums text-white/35 group-hover:text-white/70">
-                    {a.surah}:{a.ayah}
-                  </span>
-                  <span className="relative h-1 w-full overflow-hidden rounded-full bg-white/15">
-                    <span
-                      className={isPast ? "tone-bg block h-full w-full" : ""}
-                    />
-                    {isCurrent && (
-                      <span
-                        className="tone-bg absolute left-0 top-0 h-full"
-                        style={{ width: `${clipProgress * 100}%` }}
-                      />
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Bitta silliq progress chizig'i */}
+          <button
+            type="button"
+            aria-label="seek"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              player.seekTo((e.clientX - r.left) / r.width);
+            }}
+            className="group relative h-4 min-w-[160px] flex-1"
+          >
+            <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/15" />
+            <span
+              className="tone-bg absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full"
+              style={{ width: `${Math.min(100, clipProgress * 100)}%` }}
+            />
+            <span
+              className="tone-bg absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+              style={{ left: `${Math.min(100, clipProgress * 100)}%` }}
+            />
+          </button>
 
           <span className="text-xs tabular-nums text-white/60">
             −{formatClock(remaining)}

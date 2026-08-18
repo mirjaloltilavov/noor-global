@@ -34,6 +34,8 @@ export interface Prefs {
   repeat: RepeatMode;
   /** Karaoke — o'qilayotgan so'z yorqinroq ko'rsatiladi */
   karaoke: boolean;
+  /** O'qilayotgan so'z ostida ma'nosi ko'rsatiladi */
+  wordByWord: boolean;
   /** Onboarding overlay bir marta ko'rsatilgach yopiladi */
   onboarded: boolean;
 }
@@ -56,6 +58,7 @@ export const DEFAULT_PREFS: Prefs = {
   rate: 1,
   repeat: "off",
   karaoke: true,
+  wordByWord: false,
   onboarded: false,
 };
 

@@ -10,7 +10,7 @@ import { SurahModal } from "@/components/player/SurahModal";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon } from "@/components/ui/Icon";
-import { MOODS, SURAHS, getMood } from "@/lib/sakinah";
+import { SURAHS, getMood } from "@/lib/sakinah";
 
 type Tab = "player" | "sakinah";
 type ModalKind = "surahs" | "queue" | "settings" | null;
@@ -23,14 +23,8 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
   const { t, prefs, vibe } = useApp();
   const player = usePlayer();
 
-  const [tab, setTab] = useState<Tab>(vibe && !vibe.done ? "sakinah" : "player");
   const [modal, setModal] = useState<ModalKind>(null);
-
-  const surahName = player.segment
-    ? SURAHS[player.segment.surah]?.slug ??
-      player.chapters.find((c) => c.id === player.segment?.surah)?.slug ??
-      ""
-    : "";
+  const tab: Tab = player.mode;
 
   return (
     <Stage
@@ -57,7 +51,7 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
               <button
                 key={x}
                 type="button"
-                onClick={() => setTab(x)}
+                onClick={() => player.setMode(x)}
                 aria-pressed={tab === x}
                 className={[
                   "h-9 rounded-full px-5 text-sm transition",
@@ -72,6 +66,8 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            {tab === "player" && (
+              <>
             <HeaderButton
               icon="quran"
               label={t("player.surahs")}
@@ -87,17 +83,10 @@ export function FullScreen({ onOpenOnboarding }: { onOpenOnboarding: () => void 
               label={t("player.settings")}
               onClick={() => setModal("settings")}
             />
+              </>
+            )}
           </div>
         </header>
-
-        {/* Sarlavha — faqat pleyer tabida */}
-        {tab === "player" && player.segment && (
-          <p className="shrink-0 pb-2 text-center text-sm text-white/55">
-            {surahName}
-            {player.track && ` ${player.track.surah}:${player.track.ayah}`}
-            <span className="text-white/30"> · {t("majlis.listening")}</span>
-          </p>
-        )}
 
         {/* Tanasi */}
         <div key={tab} className="anim-fade-in flex min-h-0 flex-1 flex-col">
@@ -235,7 +224,6 @@ function SakinahStart({ onBegin }: { onBegin: () => void }) {
         {t("entry.disclaimer")}
       </p>
 
-      <span className="sr-only">{MOODS.length}</span>
     </div>
   );
 }

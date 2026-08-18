@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
+import { AyahText } from "@/components/player/AyahText";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { QueueModal } from "@/components/player/QueueModal";
 import { SurahModal } from "@/components/player/SurahModal";
@@ -192,29 +193,12 @@ export function ReadingScene({
 
             {ayah && !cursor.bismillah && (
               <>
-                {karaokeReady ? (
-                  <p className="arabic font-arabic text-white" style={arabicStyle}>
-                    {ayah.words.map((w, i) => (
-                      <span
-                        key={w.position}
-                        className={[
-                          "kw",
-                          i === player.wordIndex
-                            ? "kw-now"
-                            : i < player.wordIndex
-                              ? "kw-done"
-                              : "",
-                        ].join(" ")}
-                      >
-                        {prefs.script === "indopak" ? w.indopak : w.uthmani}{" "}
-                      </span>
-                    ))}
-                  </p>
-                ) : (
-                  <p className="arabic font-arabic text-white" style={arabicStyle}>
-                    {prefs.script === "indopak" ? ayah.indopak : ayah.uthmani}
-                  </p>
-                )}
+                <AyahText
+                  ayah={ayah}
+                  active
+                  wordIndex={player.wordIndex}
+                  fontPx={fontPx}
+                />
 
                 {showTransliteration && ayah.transliteration && (
                   <p className="mt-6 text-sm italic text-white/45">
@@ -394,6 +378,21 @@ export function ReadingScene({
                     label={t("read.showTransliteration")}
                     checked={prefs.showTransliteration}
                     onChange={(v) => setPrefs({ showTransliteration: v })}
+                  />
+                </label>
+                <label className="mt-3 flex items-center justify-between gap-4 border-t border-white/10 pt-3">
+                  <span>
+                    <span className="block text-sm text-white/80">
+                      {t("read.wordByWord")}
+                    </span>
+                    <span className="block text-[11px] text-white/45">
+                      {t("read.wordByWordHint")}
+                    </span>
+                  </span>
+                  <Toggle
+                    label={t("read.wordByWord")}
+                    checked={prefs.wordByWord}
+                    onChange={(v) => setPrefs({ wordByWord: v })}
                   />
                 </label>
               </Popover>

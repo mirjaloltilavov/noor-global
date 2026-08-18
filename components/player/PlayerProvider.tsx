@@ -24,13 +24,29 @@ import { SURAHS, getMood, getReciter, type MoodId } from "@/lib/sakinah";
 import type { Ayah, Chapter } from "@/lib/quran";
 import { prefetchPassage, useChapters, usePassage } from "@/lib/useQuran";
 
+/** Ikki mustaqil rejim: Qur'on pleyeri va kayfiyat sessiyasi */
+export type Mode = "player" | "sakinah";
+
 interface Cursor {
   pos: number;
   bismillah: boolean;
 }
 
+interface Queue {
+  segments: Segment[];
+  cursor: Cursor;
+}
+
+const EMPTY: Queue = { segments: [], cursor: { pos: 0, bismillah: false } };
+
 interface PlayerValue {
+  mode: Mode;
+  setMode: (m: Mode) => void;
+  /** Joriy rejimda navbat bormi */
   active: boolean;
+  /** Har rejim uchun alohida */
+  hasQueue: Record<Mode, boolean>;
+
   segments: Segment[];
   tracks: Track[];
   cursor: Cursor;
@@ -38,28 +54,23 @@ interface PlayerValue {
   segment: Segment | null;
   segIndex: number;
   playing: boolean;
+  /** Silliq animatsiya uchun har kadrda yangilanadi */
   elapsed: number;
   clipLength: number;
   chapters: Chapter[];
   finished: boolean;
 
   ayah: Ayah | null;
-  /** Joriy parchadagi barcha oyatlar */
   ayahs: Ayah[] | null;
   loading: boolean;
   error: boolean;
-  /** Karaoke uchun — hozir o'qilayotgan so'z tartibi (0 dan), yo'q bo'lsa -1 */
   wordIndex: number;
 
-  /** Pleyer fonda — sayt interfeysi ko'rinadi, tilovat davom etadi */
   minimized: boolean;
   setMinimized: (v: boolean) => void;
-  /** Uyqu taymeri (daqiqa, 0 — o'chiq) */
   sleepMinutes: number;
   setSleepMinutes: (m: number) => void;
-  /** Qolgan vaqt (soniya) */
   sleepLeft: number;
-  /** 0–1 */
   volume: number;
   setVolume: (v: number) => void;
 
@@ -71,7 +82,6 @@ interface PlayerValue {
   seekBy: (delta: number) => void;
   seekTo: (fraction: number) => void;
   jumpToSegment: (index: number) => void;
-  /** Navbatdagi aniq oyatga o'tish (track indeksi) */
   jumpToAyah: (trackIndex: number) => void;
 
   startVibe: (mood: MoodId) => void;
@@ -93,8 +103,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const { locale, prefs, translationId, vibe, setVibe, pushHistory } = useApp();
   const recitationId = getReciter(prefs.reciter).recitationId;
 
-  const [segments, setSegments] = useState<Segment[]>([]);
-  const [cursor, setCursor] = useState<Cursor>({ pos: 0, bismillah: false });
+  const [mode, setModeState] = useState<Mode>("player");
+  const [queues, setQueues] = useState<Record<Mode, Queue>>({
+    player: EMPTY,
+    sakinah: EMPTY,
+  });
+
   const [playing, setPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [clipLength, setClipLength] = useState(0);
@@ -108,13 +122,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chapters = useChapters(locale);
 
+  const queue = queues[mode];
+  const segments = queue.segments;
+  const cursor = queue.cursor;
+
   const tracks = useMemo(() => flattenTracks(segments), [segments]);
   const pos = cursor.pos;
   const track = tracks[pos] ?? null;
   const segIndex = track?.segment ?? 0;
   const segment = segments[segIndex] ?? null;
 
-  const inVibe = vibe !== null && !vibe.done;
+  const inVibe = mode === "sakinah" && vibe !== null && !vibe.done;
 
   const { ayahs, loading, error } = usePassage(
     segment?.surah ?? null,
@@ -125,13 +143,56 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
   const ayah = ayahs?.find((a) => a.ayah === track?.ayah) ?? null;
 
-  /* ——— Kursor ——————————————————————————————————————— */
+  /* ——— Navbatlar ——————————————————————————————————— */
+
+  const writeQueue = useCallback(
+    (m: Mode, segs: Segment[], nextPos: number) => {
+      setQueues((prev) => ({
+        ...prev,
+        [m]: {
+          segments: segs,
+          cursor: {
+            pos: nextPos,
+            bismillah: needsBismillah(segs, flattenTracks(segs), nextPos),
+          },
+        },
+      }));
+    },
+    []
+  );
 
   const moveTo = useCallback(
-    (nextPos: number, segs: Segment[] = segments, trs: Track[] = tracks) => {
-      setCursor({ pos: nextPos, bismillah: needsBismillah(segs, trs, nextPos) });
+    (nextPos: number) => {
+      setQueues((prev) => {
+        const q = prev[mode];
+        return {
+          ...prev,
+          [mode]: {
+            ...q,
+            cursor: {
+              pos: nextPos,
+              bismillah: needsBismillah(
+                q.segments,
+                flattenTracks(q.segments),
+                nextPos
+              ),
+            },
+          },
+        };
+      });
     },
-    [segments, tracks]
+    [mode]
+  );
+
+  /** Tab almashganda o'sha rejimning navbati o'z holidan davom etadi */
+  const setMode = useCallback(
+    (m: Mode) => {
+      setModeState(m);
+      setElapsed(0);
+      setClipLength(0);
+      if (queues[m].segments.length === 0) setPlaying(false);
+    },
+    [queues]
   );
 
   /* ——— Audio ——————————————————————————————————————— */
@@ -165,6 +226,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
+
+  /* ——— Silliq progress ————————————————————————————————
+     timeupdate sekundiga ~4 marta keladi va chiziq sakrab yuradi;
+     ijro paytida vaqtni har kadrda o'qiymiz. */
+
+  useEffect(() => {
+    if (!playing) return;
+    let raf = 0;
+    const tick = () => {
+      const el = audioRef.current;
+      if (el) setElapsed(el.currentTime);
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [playing]);
 
   /* ——— Uyqu taymeri ——————————————————————————————— */
 
@@ -210,21 +287,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const s = ayah.segments[i];
       if (ms >= s[2] && ms < s[3]) return i;
     }
-    // Oxirgi so'zdan keyin ham u yorqin qolsin
     const last = ayah.segments[ayah.segments.length - 1];
     return ms >= last[3] ? ayah.segments.length - 1 : -1;
   }, [elapsed, ayah, prefs.karaoke, cursor.bismillah]);
 
-  /* ——— Rejimlar ——————————————————————————————————— */
+  /* ——— Rejimlarni boshlash ——————————————————————————— */
 
   const startVibe = useCallback(
     (mood: MoodId) => {
       const segs = planSegments(getMood(mood), prefs.duration);
-      setSegments(segs);
-      setCursor({
-        pos: 0,
-        bismillah: needsBismillah(segs, flattenTracks(segs), 0),
-      });
+      writeQueue("sakinah", segs, 0);
+      setModeState("sakinah");
       setVibe({
         mood,
         startedAt: Date.now(),
@@ -235,17 +308,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setMinimized(false);
       setPlaying(true);
     },
-    [prefs.duration, setVibe]
+    [prefs.duration, setVibe, writeQueue]
   );
 
-  const startSurah = useCallback((surah: number, verses: number) => {
-    const segs = surahPlan(surah, verses);
-    setSegments(segs);
-    setCursor({
-      pos: 0,
-      bismillah: needsBismillah(segs, flattenTracks(segs), 0),
-    });
-  }, []);
+  const startSurah = useCallback(
+    (surah: number, verses: number) => {
+      writeQueue("player", surahPlan(surah, verses), 0);
+      setModeState("player");
+    },
+    [writeQueue]
+  );
 
   /* ——— Navbat bo'ylab ——————————————————————————————— */
 
@@ -286,18 +358,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     if (inVibe && vibe) {
       if (vibe.minutes === 0) {
-        const grown = extendPlan(getMood(vibe.mood), segments);
-        setSegments(grown);
-        moveTo(nextPos, grown, flattenTracks(grown));
+        writeQueue(
+          "sakinah",
+          extendPlan(getMood(vibe.mood), segments),
+          nextPos
+        );
         return;
       }
       finishSession();
       return;
     }
 
+    // Qur'on pleyeri — keyingi sura
     const nextSurah = (segment?.surah ?? 0) + 1;
     const ch = chapters.find((c) => c.id === nextSurah);
-    if (ch) startSurah(ch.id, ch.verses);
+    if (ch) writeQueue("player", surahPlan(ch.id, ch.verses), 0);
     else setPlaying(false);
   }, [
     pos,
@@ -310,14 +385,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     finishSession,
     segment,
     chapters,
-    startSurah,
     moveTo,
+    writeQueue,
   ]);
 
   const prev = useCallback(() => {
     const el = audioRef.current;
     if (el && el.currentTime > 3) {
       el.currentTime = 0;
+      setElapsed(0);
       return;
     }
     moveTo(Math.max(0, pos - 1));
@@ -325,7 +401,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   function handleEnded() {
     if (cursor.bismillah) {
-      setCursor((c) => ({ ...c, bismillah: false }));
+      setQueues((prev) => ({
+        ...prev,
+        [mode]: {
+          ...prev[mode],
+          cursor: { ...prev[mode].cursor, bismillah: false },
+        },
+      }));
       return;
     }
     if (prefs.repeat === "ayah") {
@@ -346,12 +428,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       Math.max(0, el.currentTime + delta),
       el.duration - 0.1
     );
+    setElapsed(el.currentTime);
   }, []);
 
   const seekTo = useCallback((fraction: number) => {
     const el = audioRef.current;
     if (!el || !Number.isFinite(el.duration)) return;
     el.currentTime = el.duration * Math.min(1, Math.max(0, fraction));
+    setElapsed(el.currentTime);
   }, []);
 
   const jumpToSegment = useCallback(
@@ -371,33 +455,43 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const continueSession = useCallback(() => {
     if (!vibe) return;
-    const grown = extendPlan(getMood(vibe.mood), segments, 20);
-    setSegments(grown);
+    writeQueue(
+      "sakinah",
+      extendPlan(getMood(vibe.mood), segments, 20),
+      pos + 1
+    );
     setVibe({ ...vibe, done: false });
     setFinished(false);
-    moveTo(pos + 1, grown, flattenTracks(grown));
     setPlaying(true);
-  }, [vibe, segments, setVibe, pos, moveTo]);
+  }, [vibe, segments, setVibe, pos, writeQueue]);
 
+  /** Vibe tugadi — Qur'on pleyeriga o'tamiz */
   const endSession = useCallback(() => {
     setFinished(false);
     const surah = segment?.surah ?? 1;
     const verses =
       SURAHS[surah]?.verses ?? chapters.find((c) => c.id === surah)?.verses ?? 7;
-    startSurah(surah, verses);
-  }, [segment, chapters, startSurah]);
+    writeQueue("player", surahPlan(surah, verses), 0);
+    setModeState("player");
+    setPlaying(false);
+  }, [segment, chapters, writeQueue]);
 
   const closePlayer = useCallback(() => {
     setPlaying(false);
-    setSegments([]);
-    setCursor({ pos: 0, bismillah: false });
+    setQueues((prev) => ({ ...prev, [mode]: EMPTY }));
     setFinished(false);
     setMinimized(false);
-  }, []);
+  }, [mode]);
 
   const value = useMemo<PlayerValue>(
     () => ({
+      mode,
+      setMode,
       active: segments.length > 0,
+      hasQueue: {
+        player: queues.player.segments.length > 0,
+        sakinah: queues.sakinah.segments.length > 0,
+      },
       segments,
       tracks,
       cursor,
@@ -437,6 +531,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       closePlayer,
     }),
     [
+      mode,
+      setMode,
+      queues,
       segments,
       tracks,
       cursor,
@@ -480,7 +577,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         preload="auto"
         onEnded={handleEnded}
         onLoadedMetadata={(e) => setClipLength(e.currentTarget.duration || 0)}
-        onTimeUpdate={(e) => setElapsed(e.currentTarget.currentTime)}
+        onTimeUpdate={(e) => {
+          if (!playing) setElapsed(e.currentTarget.currentTime);
+        }}
         onError={() => setPlaying(false)}
       />
     </Ctx.Provider>

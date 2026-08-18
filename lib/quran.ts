@@ -9,6 +9,10 @@ export interface Word {
   position: number;
   uthmani: string;
   indopak: string;
+  /** So'zning lotin transliteratsiyasi */
+  latin: string;
+  /** So'z ma'nosi — quran.com faqat inglizchasini beradi */
+  meaning: string;
 }
 
 export interface Ayah {
@@ -56,6 +60,8 @@ interface RawWord {
   char_type_name?: string;
   text_uthmani?: string;
   text_indopak?: string;
+  transliteration?: { text: string | null };
+  translation?: { text: string | null };
 }
 
 interface RawVerse {
@@ -78,7 +84,7 @@ async function fetchVerse(
     `?fields=text_uthmani,text_indopak` +
     `&translations=${ids}` +
     `&audio=${recitationId}` +
-    `&words=true&word_fields=text_uthmani,text_indopak`;
+    `&words=true&word_fields=text_uthmani,text_indopak&word_translation_language=en`;
 
   const res = await fetch(url, { next: { revalidate: 60 * 60 * 24 * 7 } });
   if (!res.ok) throw new Error(`quran.com ${res.status} for ${key}`);
@@ -97,6 +103,8 @@ async function fetchVerse(
       position: w.position,
       uthmani: w.text_uthmani ?? "",
       indopak: w.text_indopak ?? w.text_uthmani ?? "",
+      latin: w.transliteration?.text ?? "",
+      meaning: w.translation?.text ?? "",
     }));
 
   return {

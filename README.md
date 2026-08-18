@@ -21,11 +21,15 @@ Hammasi bitta manzilda — `/sakinah`. Navbardagi yagona ijro bo'limi (play
 ikonkasi) shu yerga olib keladi va darhol full-screen pleyer ochiladi.
 Tepadagi tab orqali ikki ko'rinish almashadi:
 
-- **Pleyer** — Figmadagi «Majlis — Ambient Session» (Concept B): chapda
-  sessiya ro'yxati va aylanma progressi, markazda oyatlar (joriysi yorqin,
-  qolganlari so'ngan), o'ngda qori halqasi, so'zma-so'z kartasi, tezlik ·
-  uyqu taymeri · ulashish, pastda oyatlarga bo'lingan vaqt chizig'i.
-- **Sakinah** — kayfiyat sessiyasi (S8–S15 sahnasi).
+**Ikki rejim bir-biridan mustaqil** — har birining o'z navbati va o'z
+joyi bor, tab almashganda ikkinchisi buzilmaydi.
+
+- **Pleyer** — Qur'on pleyeri, Figmadagi «Majlis — Ambient Session»
+  (Concept B): chapda sessiya ro'yxati va aylanma progressi, markazda
+  oyatlar (joriysi yorqin, qolganlari so'ngan), o'ngda qori, ijro tezligi ·
+  uyqu taymeri · ulashish, pastda silliq vaqt chizig'i va ovoz balandligi.
+- **Sakinah** — faqat kayfiyat sessiyasi (S8–S15 sahnasi), o'z ikonka
+  ustuni bilan.
 
 1. **Uy sahifasi** — hero, «Boshlash», standart qorini tanlash, so'nggi
    sessiyalar (qidiruv va «Takrorlash» bilan), tugallanmagan sessiya banneri.
@@ -54,8 +58,12 @@ Tepadagi tab orqali ikki ko'rinish almashadi:
 
 Tilovat davomida o'qilayotgan so'z yorqinlashadi, o'tganlari biroz so'nadi.
 So'zma-so'z vaqt belgilari quran.com API'sidan keladi (`audio.segments`),
-shuning uchun bu taqribiy emas — haqiqiy vaqt bo'yicha. Tipografika
-popoveridan yoqib-o'chiriladi.
+shuning uchun bu taqribiy emas — haqiqiy vaqt bo'yicha. Sozlamalardan
+yoqib-o'chiriladi.
+
+**So'zma-so'z tarjima** — yoqilsa, o'qilayotgan so'zning transliteratsiyasi
+va ma'nosi aynan o'sha so'z ostida chiqadi. quran.com so'z ma'nolarini
+faqat inglizcha beradi.
 
 Shu sababli tilovat everyayah o'rniga quran.com CDN'idan olinadi va
 qorilar ro'yxati so'z belgilari mavjud bo'lganlar bilan cheklandi:
