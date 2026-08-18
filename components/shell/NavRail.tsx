@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { usePlayer } from "@/components/player/PlayerProvider";
 import { useApp } from "@/components/providers/AppProvider";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
@@ -25,6 +26,10 @@ const ITEMS: NavItem[] = [
 export function NavRail() {
   const pathname = usePathname();
   const { t } = useApp();
+  const player = usePlayer();
+
+  /** Sakinah bosilganda to'g'ridan-to'g'ri full ekranga qaytamiz */
+  const open = () => player.setMinimized(false);
 
   return (
     <>
@@ -35,6 +40,7 @@ export function NavRail() {
       >
         <Link
           href="/sakinah"
+          onClick={open}
           className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white shadow-soft transition hover:bg-brand-strong active:scale-95"
           aria-label={t("brand.name")}
         >
@@ -44,7 +50,11 @@ export function NavRail() {
         <ul className="mt-6 flex w-16 flex-col gap-1">
           {ITEMS.map((item) => (
             <li key={item.href}>
-              <RailLink item={item} active={pathname === item.href} />
+              <RailLink
+                item={item}
+                active={pathname === item.href}
+                onOpen={item.href === "/sakinah" ? open : undefined}
+              />
             </li>
           ))}
         </ul>
@@ -72,6 +82,7 @@ export function NavRail() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={item.href === "/sakinah" ? open : undefined}
               aria-current={active ? "page" : undefined}
               className="relative flex flex-1 flex-col items-center gap-0.5 py-2 transition active:scale-95"
             >
@@ -102,12 +113,21 @@ export function NavRail() {
   );
 }
 
-function RailLink({ item, active }: { item: NavItem; active: boolean }) {
+function RailLink({
+  item,
+  active,
+  onOpen,
+}: {
+  item: NavItem;
+  active: boolean;
+  onOpen?: () => void;
+}) {
   const { t } = useApp();
 
   return (
     <Link
       href={item.href}
+      onClick={onOpen}
       aria-current={active ? "page" : undefined}
       className={[
         "group relative flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-xl transition duration-200",
