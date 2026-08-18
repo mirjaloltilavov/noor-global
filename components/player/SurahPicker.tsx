@@ -65,6 +65,9 @@ export function SurahPicker({ onPicked }: { onPicked?: () => void }) {
               <span className="block truncate text-base font-semibold text-white">
                 {lastChapter.slug} {lastChapter.id}:{prefs.lastAyah}
               </span>
+              <span className="block truncate text-[11px] text-white/40">
+                {lastChapter.translated}
+              </span>
             </span>
             <span className="arabic shrink-0 font-arabic text-lg text-white/45">
               {lastChapter.arabic}
@@ -124,7 +127,7 @@ export function SurahPicker({ onPicked }: { onPicked?: () => void }) {
                         {c.slug}
                       </span>
                       <span className="block truncate text-[11px] text-white/40">
-                        {t("player.versesN", { n: c.verses })}
+                        {c.translated} · {t("player.versesN", { n: c.verses })}
                       </span>
                     </span>
                     <span className="arabic shrink-0 font-arabic text-base text-white/45">

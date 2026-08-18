@@ -109,8 +109,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
    * Ikkalasi odatda bir xil. Tab almashtirilsa audioMode o'zgarmaydi —
    * shuning uchun Sakinahdan Playerga o'tilganda tilovat to'xtamaydi.
    */
-  const [mode, setModeState] = useState<Mode>("player");
-  const [audioMode, setAudioMode] = useState<Mode>("player");
+  // Bo'lim «Sakinah» deb ataladi — birinchi ochilganda o'sha tab faol
+  const [mode, setModeState] = useState<Mode>("sakinah");
+  const [audioMode, setAudioMode] = useState<Mode>("sakinah");
   const [queues, setQueues] = useState<Record<Mode, Queue>>({
     player: EMPTY,
     sakinah: EMPTY,
