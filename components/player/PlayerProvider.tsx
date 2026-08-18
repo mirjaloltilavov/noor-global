@@ -42,9 +42,8 @@ const EMPTY: Queue = { segments: [], cursor: { pos: 0, bismillah: false } };
 interface PlayerValue {
   mode: Mode;
   setMode: (m: Mode) => void;
-  /** Joriy rejimda navbat bormi */
+  /** Joriy KO'RILAYOTGAN rejimda navbat bormi */
   active: boolean;
-  /** Har rejim uchun alohida */
   hasQueue: Record<Mode, boolean>;
 
   segments: Segment[];
@@ -104,7 +103,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     useApp();
   const recitationId = getReciter(prefs.reciter).recitationId;
 
+  /**
+   * `mode`     — foydalanuvchi KO'RAYOTGAN tab (UI).
+   * `audioMode` — hozir OVOZ chalinayotgan navbat.
+   * Ikkalasi odatda bir xil. Tab almashtirilsa audioMode o'zgarmaydi —
+   * shuning uchun Sakinahdan Playerga o'tilganda tilovat to'xtamaydi.
+   */
   const [mode, setModeState] = useState<Mode>("player");
+  const [audioMode, setAudioMode] = useState<Mode>("player");
   const [queues, setQueues] = useState<Record<Mode, Queue>>({
     player: EMPTY,
     sakinah: EMPTY,
@@ -123,84 +129,81 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chapters = useChapters(locale);
 
-  const queue = queues[mode];
-  const segments = queue.segments;
-  const cursor = queue.cursor;
-
-  const tracks = useMemo(() => flattenTracks(segments), [segments]);
-  const pos = cursor.pos;
-  const track = tracks[pos] ?? null;
-  const segIndex = track?.segment ?? 0;
-  const segment = segments[segIndex] ?? null;
-
-  const inVibe = mode === "sakinah" && vibe !== null && !vibe.done;
+  /* ——— Ko'rilayotgan navbat (UI) ——— */
+  const vQueue = queues[mode];
+  const vSegments = vQueue.segments;
+  const vCursor = vQueue.cursor;
+  const vTracks = useMemo(() => flattenTracks(vSegments), [vSegments]);
+  const vTrack = vTracks[vCursor.pos] ?? null;
+  const vSegIndex = vTrack?.segment ?? 0;
+  const vSegment = vSegments[vSegIndex] ?? null;
 
   const { ayahs, loading, error } = usePassage(
-    segment?.surah ?? null,
-    segment?.from ?? null,
-    segment?.to ?? null,
+    vSegment?.surah ?? null,
+    vSegment?.from ?? null,
+    vSegment?.to ?? null,
     translationId,
     recitationId
   );
-  const ayah = ayahs?.find((a) => a.ayah === track?.ayah) ?? null;
+  const ayah = ayahs?.find((a) => a.ayah === vTrack?.ayah) ?? null;
 
-  /* ——— Navbatlar ——————————————————————————————————— */
+  /* ——— Chalinayotgan navbat (audio) ——— */
+  const aQueue = queues[audioMode];
+  const aSegments = aQueue.segments;
+  const aCursor = aQueue.cursor;
+  const aTracks = useMemo(() => flattenTracks(aSegments), [aSegments]);
+  const aTrack = aTracks[aCursor.pos] ?? null;
+  const aSegIndex = aTrack?.segment ?? 0;
+  const aSegment = aSegments[aSegIndex] ?? null;
 
-  const writeQueue = useCallback(
-    (m: Mode, segs: Segment[], nextPos: number) => {
-      setQueues((prev) => ({
+  const { ayahs: aAyahs } = usePassage(
+    aSegment?.surah ?? null,
+    aSegment?.from ?? null,
+    aSegment?.to ?? null,
+    translationId,
+    recitationId
+  );
+  const aAyah = aAyahs?.find((a) => a.ayah === aTrack?.ayah) ?? null;
+
+  /* ——— Navbatga yozish ——— */
+  const moveInQueue = useCallback((m: Mode, nextPos: number) => {
+    setQueues((prev) => {
+      const q = prev[m];
+      return {
         ...prev,
         [m]: {
-          segments: segs,
+          ...q,
           cursor: {
             pos: nextPos,
-            bismillah: needsBismillah(segs, flattenTracks(segs), nextPos),
+            bismillah: needsBismillah(q.segments, flattenTracks(q.segments), nextPos),
           },
         },
-      }));
-    },
-    []
-  );
+      };
+    });
+  }, []);
 
-  const moveTo = useCallback(
-    (nextPos: number) => {
-      setQueues((prev) => {
-        const q = prev[mode];
-        return {
-          ...prev,
-          [mode]: {
-            ...q,
-            cursor: {
-              pos: nextPos,
-              bismillah: needsBismillah(
-                q.segments,
-                flattenTracks(q.segments),
-                nextPos
-              ),
-            },
-          },
-        };
-      });
-    },
-    [mode]
-  );
+  const writeQueue = useCallback((m: Mode, segs: Segment[], nextPos: number) => {
+    setQueues((prev) => ({
+      ...prev,
+      [m]: {
+        segments: segs,
+        cursor: {
+          pos: nextPos,
+          bismillah: needsBismillah(segs, flattenTracks(segs), nextPos),
+        },
+      },
+    }));
+  }, []);
 
-  /** Tab almashganda o'sha rejimning navbati o'z holidan davom etadi */
-  const setMode = useCallback(
-    (m: Mode) => {
-      setModeState(m);
-      setElapsed(0);
-      setClipLength(0);
-      if (queues[m].segments.length === 0) setPlaying(false);
-    },
-    [queues]
-  );
+  /** Tab almashtirish — faqat ko'rinishni o'zgartiradi, ovozga tegmaydi */
+  const setMode = useCallback((m: Mode) => {
+    setModeState(m);
+  }, []);
 
-  /* ——— Audio ——————————————————————————————————————— */
-
-  const src = cursor.bismillah
-    ? bismillahUrl(ayah?.audio ?? "")
-    : ayah?.audio ?? "";
+  /* ——— Audio ——— */
+  const src = aCursor.bismillah
+    ? bismillahUrl(aAyah?.audio ?? "")
+    : aAyah?.audio ?? "";
 
   useEffect(() => {
     const el = audioRef.current;
@@ -228,10 +231,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
-  /* ——— Silliq progress ————————————————————————————————
-     timeupdate sekundiga ~4 marta keladi va chiziq sakrab yuradi;
-     ijro paytida vaqtni har kadrda o'qiymiz. */
-
+  /* ——— Silliq progress — ijro paytida har kadrda ——— */
   useEffect(() => {
     if (!playing) return;
     let raf = 0;
@@ -244,8 +244,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => window.cancelAnimationFrame(raf);
   }, [playing]);
 
-  /* ——— Uyqu taymeri ——————————————————————————————— */
-
+  /* ——— Uyqu taymeri ——— */
   const setSleepMinutes = useCallback((m: number) => {
     setSleepMinutesState(m);
     setSleepDeadline(m > 0 ? Date.now() + m * 60_000 : null);
@@ -266,9 +265,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(id);
   }, [sleepDeadline]);
 
-  // Keyingi parcha oldindan yuklanadi
+  // Chalinayotgan navbatning keyingi parchasi oldindan yuklanadi
   useEffect(() => {
-    const nextSeg = segments[segIndex + 1];
+    const nextSeg = aSegments[aSegIndex + 1];
     if (nextSeg)
       prefetchPassage(
         nextSeg.surah,
@@ -277,42 +276,38 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         translationId,
         recitationId
       );
-  }, [segments, segIndex, translationId, recitationId]);
+  }, [aSegments, aSegIndex, translationId, recitationId]);
 
-  // Pleyer rejimida oxirgi to'xtagan joy eslab qolinadi
+  // Pleyerda oxirgi to'xtagan joy eslab qolinadi
   useEffect(() => {
-    if (mode !== "player" || !track) return;
-    if (prefs.lastSurah === track.surah && prefs.lastAyah === track.ayah) return;
-    setPrefs({ lastSurah: track.surah, lastAyah: track.ayah });
+    if (audioMode !== "player" || !aTrack) return;
+    if (prefs.lastSurah === aTrack.surah && prefs.lastAyah === aTrack.ayah)
+      return;
+    setPrefs({ lastSurah: aTrack.surah, lastAyah: aTrack.ayah });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, track?.surah, track?.ayah]);
+  }, [audioMode, aTrack?.surah, aTrack?.ayah]);
 
-  /* ——— Karaoke ————————————————————————————————————— */
-
+  /* ——— Karaoke — faqat ko'rilayotgan tab chalinayotgan bo'lsa ——— */
   const wordIndex = useMemo(() => {
-    if (cursor.bismillah || !prefs.karaoke || !ayah?.segments.length) return -1;
+    if (mode !== audioMode) return -1;
+    if (aCursor.bismillah || !prefs.karaoke || !aAyah?.segments.length) return -1;
     const ms = elapsed * 1000;
-    for (let i = 0; i < ayah.segments.length; i++) {
-      const s = ayah.segments[i];
+    for (let i = 0; i < aAyah.segments.length; i++) {
+      const s = aAyah.segments[i];
       if (ms >= s[2] && ms < s[3]) return i;
     }
-    const last = ayah.segments[ayah.segments.length - 1];
-    return ms >= last[3] ? ayah.segments.length - 1 : -1;
-  }, [elapsed, ayah, prefs.karaoke, cursor.bismillah]);
+    const last = aAyah.segments[aAyah.segments.length - 1];
+    return ms >= last[3] ? aAyah.segments.length - 1 : -1;
+  }, [mode, audioMode, elapsed, aAyah, prefs.karaoke, aCursor.bismillah]);
 
-  /* ——— Rejimlarni boshlash ——————————————————————————— */
-
+  /* ——— Boshlash ——— */
   const startVibe = useCallback(
     (mood: MoodId) => {
       const segs = planSegments(getMood(mood), prefs.duration);
       writeQueue("sakinah", segs, 0);
       setModeState("sakinah");
-      setVibe({
-        mood,
-        startedAt: Date.now(),
-        minutes: prefs.duration,
-        done: false,
-      });
+      setAudioMode("sakinah");
+      setVibe({ mood, startedAt: Date.now(), minutes: prefs.duration, done: false });
       setFinished(false);
       setMinimized(false);
       setPlaying(true);
@@ -324,12 +319,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     (surah: number, verses: number) => {
       writeQueue("player", surahPlan(surah, verses), 0);
       setModeState("player");
+      setAudioMode("player");
     },
     [writeQueue]
   );
 
-  /* ——— Navbat bo'ylab ——————————————————————————————— */
-
+  /* ——— Chalinayotgan navbat bo'ylab ——— */
   const finishSession = useCallback(() => {
     if (!vibe) return;
     setPlaying(false);
@@ -341,7 +336,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       id: `${vibe.mood}-${vibe.startedAt}`,
       at: vibe.startedAt,
       mood: vibe.mood,
-      refs: segments
+      refs: aSegments
         .filter((s) => s.kind === "vibe")
         .map((s) => {
           const name = SURAHS[s.surah]?.slug ?? `Surah ${s.surah}`;
@@ -349,29 +344,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
             ? `${name} ${s.surah}:${s.from}`
             : `${name} ${s.surah}:${s.from}–${s.to}`;
         }),
-      minutes: totalMinutes(segments),
+      minutes: totalMinutes(aSegments),
     });
-  }, [vibe, segments, setVibe, pushHistory]);
+  }, [vibe, aSegments, setVibe, pushHistory]);
 
   const next = useCallback(() => {
-    const nextPos = pos + 1;
+    const nextPos = aCursor.pos + 1;
 
-    if (nextPos < tracks.length) {
-      if (prefs.repeat === "segment" && tracks[nextPos].segment !== segIndex) {
-        moveTo(tracks.findIndex((x) => x.segment === segIndex));
+    if (nextPos < aTracks.length) {
+      if (
+        prefs.repeat === "segment" &&
+        aTracks[nextPos].segment !== aSegIndex
+      ) {
+        moveInQueue(audioMode, aTracks.findIndex((x) => x.segment === aSegIndex));
       } else {
-        moveTo(nextPos);
+        moveInQueue(audioMode, nextPos);
       }
       return;
     }
 
-    if (inVibe && vibe) {
+    if (audioMode === "sakinah" && vibe && !vibe.done) {
       if (vibe.minutes === 0) {
-        writeQueue(
-          "sakinah",
-          extendPlan(getMood(vibe.mood), segments),
-          nextPos
-        );
+        writeQueue("sakinah", extendPlan(getMood(vibe.mood), aSegments), nextPos);
         return;
       }
       finishSession();
@@ -379,22 +373,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Qur'on pleyeri — keyingi sura
-    const nextSurah = (segment?.surah ?? 0) + 1;
+    const nextSurah = (aSegment?.surah ?? 0) + 1;
     const ch = chapters.find((c) => c.id === nextSurah);
     if (ch) writeQueue("player", surahPlan(ch.id, ch.verses), 0);
     else setPlaying(false);
   }, [
-    pos,
-    tracks,
+    aCursor.pos,
+    aTracks,
     prefs.repeat,
-    segIndex,
-    inVibe,
+    aSegIndex,
+    audioMode,
     vibe,
-    segments,
+    aSegments,
     finishSession,
-    segment,
+    aSegment,
     chapters,
-    moveTo,
+    moveInQueue,
     writeQueue,
   ]);
 
@@ -405,16 +399,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setElapsed(0);
       return;
     }
-    moveTo(Math.max(0, pos - 1));
-  }, [pos, moveTo]);
+    moveInQueue(audioMode, Math.max(0, aCursor.pos - 1));
+  }, [audioMode, aCursor.pos, moveInQueue]);
 
   function handleEnded() {
-    if (cursor.bismillah) {
+    if (aCursor.bismillah) {
       setQueues((prev) => ({
         ...prev,
-        [mode]: {
-          ...prev[mode],
-          cursor: { ...prev[mode].cursor, bismillah: false },
+        [audioMode]: {
+          ...prev[audioMode],
+          cursor: { ...prev[audioMode].cursor, bismillah: false },
         },
       }));
       return;
@@ -433,10 +427,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const seekBy = useCallback((delta: number) => {
     const el = audioRef.current;
     if (!el || !Number.isFinite(el.duration)) return;
-    el.currentTime = Math.min(
-      Math.max(0, el.currentTime + delta),
-      el.duration - 0.1
-    );
+    el.currentTime = Math.min(Math.max(0, el.currentTime + delta), el.duration - 0.1);
     setElapsed(el.currentTime);
   }, []);
 
@@ -447,43 +438,48 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setElapsed(el.currentTime);
   }, []);
 
+  /* Ro'yxatdan tanlash — ko'rilayotgan navbatni ijroga oladi */
   const jumpToSegment = useCallback(
     (index: number) => {
-      const start = tracks.findIndex((x) => x.segment === index);
-      if (start >= 0) moveTo(start);
+      const start = vTracks.findIndex((x) => x.segment === index);
+      if (start < 0) return;
+      setAudioMode(mode);
+      moveInQueue(mode, start);
+      setPlaying(true);
     },
-    [tracks, moveTo]
+    [vTracks, mode, moveInQueue]
   );
 
   const jumpToAyah = useCallback(
     (trackIndex: number) => {
-      if (trackIndex >= 0 && trackIndex < tracks.length) moveTo(trackIndex);
+      if (trackIndex < 0 || trackIndex >= vTracks.length) return;
+      setAudioMode(mode);
+      moveInQueue(mode, trackIndex);
+      setPlaying(true);
     },
-    [tracks, moveTo]
+    [vTracks.length, mode, moveInQueue]
   );
 
   const continueSession = useCallback(() => {
     if (!vibe) return;
-    writeQueue(
-      "sakinah",
-      extendPlan(getMood(vibe.mood), segments, 20),
-      pos + 1
-    );
+    writeQueue("sakinah", extendPlan(getMood(vibe.mood), aSegments, 20), aCursor.pos + 1);
+    setAudioMode("sakinah");
     setVibe({ ...vibe, done: false });
     setFinished(false);
     setPlaying(true);
-  }, [vibe, segments, setVibe, pos, writeQueue]);
+  }, [vibe, aSegments, aCursor.pos, setVibe, writeQueue]);
 
   /** Vibe tugadi — Qur'on pleyeriga o'tamiz */
   const endSession = useCallback(() => {
     setFinished(false);
-    const surah = segment?.surah ?? 1;
+    const surah = aSegment?.surah ?? 1;
     const verses =
       SURAHS[surah]?.verses ?? chapters.find((c) => c.id === surah)?.verses ?? 7;
     writeQueue("player", surahPlan(surah, verses), 0);
     setModeState("player");
+    setAudioMode("player");
     setPlaying(false);
-  }, [segment, chapters, writeQueue]);
+  }, [aSegment, chapters, writeQueue]);
 
   const closePlayer = useCallback(() => {
     setPlaying(false);
@@ -496,17 +492,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     () => ({
       mode,
       setMode,
-      active: segments.length > 0,
+      active: vSegments.length > 0,
       hasQueue: {
         player: queues.player.segments.length > 0,
         sakinah: queues.sakinah.segments.length > 0,
       },
-      segments,
-      tracks,
-      cursor,
-      track,
-      segment,
-      segIndex,
+      segments: vSegments,
+      tracks: vTracks,
+      cursor: vCursor,
+      track: vTrack,
+      segment: vSegment,
+      segIndex: vSegIndex,
       playing,
       elapsed,
       clipLength,
@@ -543,12 +539,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       mode,
       setMode,
       queues,
-      segments,
-      tracks,
-      cursor,
-      track,
-      segment,
-      segIndex,
+      vSegments,
+      vTracks,
+      vCursor,
+      vTrack,
+      vSegment,
+      vSegIndex,
       playing,
       elapsed,
       clipLength,

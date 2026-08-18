@@ -105,7 +105,7 @@ const uz: Dict = {
   "passage.adjust": "Sozlamalarni o'zgartirish",
 
   "tab.player": "Player",
-  "tab.sakinah": "Sakinah",
+  "tab.sakinah": "Sakinah (vibe)",
   "majlis.session": "SESSIYA",
   "majlis.round": "{i} / {n}-aylanma",
   "majlis.left": "≈ {n} daq qoldi",
@@ -303,7 +303,7 @@ const ru: Dict = {
   "passage.adjust": "Изменить настройки",
 
   "tab.player": "Player",
-  "tab.sakinah": "Сакина",
+  "tab.sakinah": "Сакина (vibe)",
   "majlis.session": "СЕССИЯ",
   "majlis.round": "Круг {i} из {n}",
   "majlis.left": "≈ {n} мин осталось",
@@ -501,7 +501,7 @@ const en: Dict = {
   "passage.adjust": "Adjust settings",
 
   "tab.player": "Player",
-  "tab.sakinah": "Sakinah",
+  "tab.sakinah": "Sakinah (vibe)",
   "majlis.session": "SESSION",
   "majlis.round": "Round {i} of {n}",
   "majlis.left": "≈ {n} min left",

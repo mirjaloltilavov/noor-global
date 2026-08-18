@@ -8,20 +8,27 @@ import { SurahPicker } from "@/components/player/SurahPicker";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon } from "@/components/ui/Icon";
+import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import { getMood } from "@/lib/sakinah";
 
 type Tab = "sakinah" | "player";
 
 /**
- * Full-screen ijro ekrani. Tepadagi tab: «Sakinah» (kayfiyat sessiyasi)
- * va «Player» (Qur'on pleyeri). Ikkalasi mustaqil.
+ * Ijro yuzasi. Tepada tab: «Sakinah (vibe)» va «Player». Ikkalasi mustaqil.
+ * `embedded` — sidebar yonidagi kontent maydonida; `fullscreen` — butun ekran.
  */
 export function FullScreen({
   onOpenOnboarding,
+  embedded = false,
+  fullscreen = false,
+  onToggleFullscreen,
 }: {
   onOpenOnboarding: () => void;
+  embedded?: boolean;
+  fullscreen?: boolean;
+  onToggleFullscreen: () => void;
 }) {
-  const { t, prefs, vibe } = useApp();
+  const { t, locale, setLocale, prefs, vibe } = useApp();
   const player = usePlayer();
 
   const [picking, setPicking] = useState(false);
@@ -32,17 +39,18 @@ export function FullScreen({
       background={prefs.background}
       brightness={prefs.brightness}
       reduceMotion={prefs.reduceMotion}
+      fill={embedded}
     >
-      <div className="flex h-screen flex-col">
-        <header className="flex shrink-0 items-center gap-3 px-4 py-4 sm:px-6">
+      <div className={embedded ? "flex h-full flex-col" : "flex h-screen flex-col"}>
+        <header className="flex shrink-0 items-center gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4">
           <button
             type="button"
-            onClick={() => player.setMinimized(true)}
-            aria-label={t("player.minimize")}
-            title={t("player.minimize")}
+            onClick={onToggleFullscreen}
+            aria-label={fullscreen ? t("player.collapse") : t("player.expand")}
+            title={fullscreen ? t("player.collapse") : t("player.expand")}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20 active:scale-90"
           >
-            <Icon name="chevronDown" size={18} />
+            <Icon name={fullscreen ? "minimize" : "maximize"} size={17} />
           </button>
 
           <div className="mx-auto flex items-center rounded-full border border-white/10 bg-white/[0.06] p-1 backdrop-blur">
@@ -56,7 +64,7 @@ export function FullScreen({
                 }}
                 aria-pressed={tab === x}
                 className={[
-                  "h-9 rounded-full px-5 text-sm transition",
+                  "h-9 rounded-full px-4 text-sm transition sm:px-5",
                   tab === x
                     ? "tone-bg font-semibold text-night-base"
                     : "text-white/65 hover:text-white",
@@ -67,8 +75,25 @@ export function FullScreen({
             ))}
           </div>
 
-          {/* Muvozanat uchun — o'ngdagi sozlamalar ustunda */}
-          <span className="h-10 w-10 shrink-0" aria-hidden="true" />
+          {/* Til almashtirgich */}
+          <div className="flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.06] p-0.5">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setLocale(l)}
+                aria-pressed={locale === l}
+                className={[
+                  "h-7 rounded-full px-2 text-[11px] font-semibold transition",
+                  locale === l
+                    ? "tone-bg text-night-base"
+                    : "text-white/55 hover:text-white",
+                ].join(" ")}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </header>
 
         <div key={tab} className="anim-fade-in flex min-h-0 flex-1 flex-col">

@@ -34,6 +34,7 @@ export type IconName =
   | "list"
   | "image"
   | "minimize"
+  | "maximize"
   | "waveform"
   | "aura";
 
@@ -175,6 +176,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M9.5 4.5v5h-5" />
       <path d="M14.5 19.5v-5h5" />
       <path d="m4.5 9.5 5-5M19.5 14.5l-5 5" />
+    </>
+  ),
+  maximize: (
+    <>
+      <path d="M14.5 4.5h5v5" />
+      <path d="M9.5 19.5h-5v-5" />
+      <path d="m19.5 4.5-6 6M4.5 19.5l6-6" />
     </>
   ),
   waveform: (

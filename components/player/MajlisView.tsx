@@ -129,7 +129,8 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
         </aside>
 
         {/* ——— Markaz: oldingi · joriy · keyingi ——— */}
-        <div className="sk-scroll min-w-0 flex-1 overflow-y-auto px-1 pb-6 pr-4 text-center">
+        <div className="sk-scroll min-w-0 flex-1 overflow-y-auto px-1 pr-4">
+          <div className="flex min-h-full flex-col justify-center py-6 text-center">
           {cursor.bismillah && (
             <p
               className="arabic anim-fade-in py-10 text-center font-arabic text-white"
@@ -190,6 +191,7 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 

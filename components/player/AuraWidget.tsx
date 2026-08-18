@@ -17,7 +17,8 @@ export function AuraWidget() {
   const { t, prefs } = useApp();
   const player = usePlayer();
 
-  if (!player.active || !player.minimized) return null;
+  // Dok faqat boshqa sahifalarda — /sakinah da to'liq pleyer ko'rinadi
+  if (!player.active || pathname === "/sakinah") return null;
 
   // Pleyer rejimida — mini pleyer, Sakinahda — aura vidjeti
   if (player.mode === "player") return <MiniPlayer />;

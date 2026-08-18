@@ -13,6 +13,7 @@ export function Stage({
   children,
   className = "",
   bare = false,
+  fill = false,
 }: {
   background: BackgroundId;
   brightness: number;
@@ -21,6 +22,8 @@ export function Stage({
   className?: string;
   /** Fon qatlamlarisiz — tashqi Stage ichida ishlatiladi */
   bare?: boolean;
+  /** min-h-screen o'rniga h-full — kontent maydoniga joylashadi */
+  fill?: boolean;
 }) {
   const vars = {
     "--sk-brightness": brightness / 100,
@@ -43,7 +46,8 @@ export function Stage({
   return (
     <div
       className={[
-        "relative min-h-screen overflow-hidden bg-night-base text-white",
+        "relative overflow-hidden bg-night-base text-white",
+        fill ? "h-full" : "min-h-screen",
         reduceMotion ? "sk-still" : "",
         className,
       ].join(" ")}
