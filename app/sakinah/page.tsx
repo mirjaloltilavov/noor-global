@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Onboarding } from "@/components/player/Onboarding";
+import { usePlayer } from "@/components/player/PlayerProvider";
+import { ReadingScene } from "@/components/player/ReadingScene";
 import { useApp } from "@/components/providers/AppProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { TopBar } from "@/components/shell/TopBar";
@@ -11,14 +11,54 @@ import { Icon } from "@/components/ui/Icon";
 import { DURATION_LABELS, RECITERS, getMood, type MoodId } from "@/lib/sakinah";
 import { relativeDay } from "@/lib/session";
 
-export default function SakinahHome() {
-  const router = useRouter();
+export default function SakinahPage() {
+  const player = usePlayer();
+  const [onboarding, setOnboarding] = useState(false);
+  const { setPrefs, setVibe, vibe } = useApp();
+
+  return (
+    <>
+      {player.active ? (
+        <ReadingScene
+          onExit={player.closePlayer}
+          onRetune={() => setOnboarding(true)}
+        />
+      ) : (
+        <Hub onBegin={() => setOnboarding(true)} />
+      )}
+
+      {onboarding && (
+        <Onboarding
+          initialMood={vibe?.mood ?? null}
+          dismissible
+          onBegin={(mood) => {
+            setPrefs({ onboarded: true });
+            setOnboarding(false);
+            player.startVibe(mood);
+          }}
+          onSkip={() => {
+            setPrefs({ onboarded: true });
+            setVibe(null);
+            setOnboarding(false);
+            player.startSurah(1, 7);
+            player.play();
+          }}
+          onClose={() => setOnboarding(false)}
+        />
+      )}
+    </>
+  );
+}
+
+/* ——— Uy sahifasi ————————————————————————————————————— */
+
+function Hub({ onBegin }: { onBegin: () => void }) {
   const { t, ln, locale, prefs, setPrefs, vibe, setVibe, history, ready } =
     useApp();
+  const player = usePlayer();
 
   const [query, setQuery] = useState("");
   const [howOpen, setHowOpen] = useState(false);
-  const [onboarding, setOnboarding] = useState(false);
 
   const shownHistory = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -30,17 +70,8 @@ export default function SakinahHome() {
     );
   }, [history, query, ln]);
 
-  /** Kayfiyat tanlandi — sessiya ochiladi va full-screen pleyerga o'tiladi */
-  function begin(mood: MoodId) {
-    setPrefs({ onboarded: true });
-    setVibe({
-      mood,
-      startedAt: Date.now(),
-      minutes: prefs.duration,
-      done: false,
-    });
-    setOnboarding(false);
-    router.push("/sakinah/player");
+  function repeat(mood: MoodId) {
+    player.startVibe(mood);
   }
 
   return (
@@ -73,13 +104,16 @@ export default function SakinahHome() {
               >
                 {t("compose.continueNew")}
               </button>
-              <Link
-                href="/sakinah/player"
+              <button
+                type="button"
+                onClick={() => {
+                  player.startVibe(vibe.mood);
+                }}
                 className="inline-flex h-10 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white transition hover:bg-brand-strong"
               >
                 {t("compose.continueGo")}
                 <Icon name="arrowRight" size={16} />
-              </Link>
+              </button>
             </div>
           </div>
         )}
@@ -103,7 +137,7 @@ export default function SakinahHome() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => setOnboarding(true)}
+              onClick={onBegin}
               className="h-12 rounded-full bg-brand px-9 text-base font-semibold text-white transition hover:bg-brand-strong"
             >
               {t("entry.begin")}
@@ -222,7 +256,7 @@ export default function SakinahHome() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => begin(s.mood)}
+                      onClick={() => repeat(s.mood)}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-brand-strong transition hover:gap-2"
                     >
                       {t("entry.repeat")}
@@ -235,21 +269,6 @@ export default function SakinahHome() {
           )}
         </section>
       </main>
-
-      {onboarding && (
-        <Onboarding
-          initialMood={vibe?.mood ?? null}
-          dismissible
-          onBegin={begin}
-          onSkip={() => {
-            setPrefs({ onboarded: true });
-            setVibe(null);
-            setOnboarding(false);
-            router.push("/sakinah/player");
-          }}
-          onClose={() => setOnboarding(false)}
-        />
-      )}
     </AppShell>
   );
 }

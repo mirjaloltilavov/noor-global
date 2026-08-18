@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Scheherazade_New } from "next/font/google";
+import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { AppProvider } from "@/components/providers/AppProvider";
 import "./globals.css";
 
@@ -34,7 +35,9 @@ export default function RootLayout({
   return (
     <html lang="uz" className={`${inter.variable} ${arabic.variable}`}>
       <body className="font-sans antialiased">
-        <AppProvider>{children}</AppProvider>
+        <AppProvider>
+          <PlayerProvider>{children}</PlayerProvider>
+        </AppProvider>
       </body>
     </html>
   );

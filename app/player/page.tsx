@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ComingSoon } from "@/components/ComingSoon";
 
 export default function Page() {
-  redirect("/sakinah/player");
+  return <ComingSoon sectionKey="nav.player" icon="player" />;
 }

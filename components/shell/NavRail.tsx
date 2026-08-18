@@ -15,7 +15,7 @@ interface NavItem {
 const ITEMS: NavItem[] = [
   { href: "/quran", icon: "quran", labelKey: "nav.quran", soon: true },
   { href: "/sakinah", icon: "sakinah", labelKey: "nav.sakinah" },
-  { href: "/sakinah/player", icon: "player", labelKey: "nav.player" },
+  { href: "/player", icon: "player", labelKey: "nav.player", soon: true },
   { href: "/hadith", icon: "hadith", labelKey: "nav.hadith", soon: true },
   { href: "/ai", icon: "ai", labelKey: "nav.ai", soon: true },
   { href: "/tafsir", icon: "tafsir", labelKey: "nav.tafsir", soon: true },
