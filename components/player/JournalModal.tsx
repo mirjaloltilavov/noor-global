@@ -1,58 +1,28 @@
 "use client";
 
-import { useMemo } from "react";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { useApp } from "@/components/providers/AppProvider";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { useJournalRows } from "@/lib/journal";
 import { SURAHS, getMood } from "@/lib/sakinah";
 import { relativeDay } from "@/lib/session";
-
-interface Row {
-  key: string;
-  at: number;
-  surah: number;
-  ayah: number;
-  note?: string;
-  mood?: string;
-  journalId?: string;
-}
 
 /**
  * Qur'on kundaligi — saqlangan oyatlar va o'ylanmalar bitta vaqt chizig'ida.
  * Hammasi qurilmada saqlanadi.
  */
 export function JournalModal({ onClose }: { onClose: () => void }) {
-  const { t, ln, locale, journal, removeJournal, saved, toggleSaved } = useApp();
+  const { t, ln, locale, removeJournal, toggleSaved } = useApp();
   const player = usePlayer();
-
-  // Yozuvlar va xatcho'plar — bitta ro'yxat, sana bo'yicha
-  const rows = useMemo<Row[]>(() => {
-    const fromJournal: Row[] = journal.map((j) => ({
-      key: `j-${j.id}`,
-      at: j.at,
-      surah: j.surah,
-      ayah: j.ayah,
-      note: j.note,
-      mood: j.mood,
-      journalId: j.id,
-    }));
-    const fromSaved: Row[] = saved.map((s) => ({
-      key: `s-${s.surah}:${s.ayah}`,
-      at: s.at,
-      surah: s.surah,
-      ayah: s.ayah,
-    }));
-    return [...fromJournal, ...fromSaved].sort((a, b) => b.at - a.at);
-  }, [journal, saved]);
+  const rows = useJournalRows();
 
   function open(surah: number, ayah: number) {
     const verses =
       SURAHS[surah]?.verses ??
       player.chapters.find((c) => c.id === surah)?.verses ??
       7;
-    player.startSurah(surah, verses);
-    player.jumpToAyah(ayah - 1);
+    player.startSurah(surah, verses, ayah);
     player.play();
     onClose();
   }
@@ -90,7 +60,10 @@ export function JournalModal({ onClose }: { onClose: () => void }) {
                       {ln(getMood(r.mood as never).label)}
                     </span>
                   )}
-                  <span className="ml-auto text-xs font-semibold text-white">
+                  <span className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-white">
+                    {r.bookmarked && (
+                      <Icon name="bookmark" size={11} filled className="text-white/40" />
+                    )}
                     {name} {r.surah}:{r.ayah}
                   </span>
                 </div>

@@ -5,6 +5,7 @@ import { AyahText } from "@/components/player/AyahText";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { JournalModal } from "@/components/player/JournalModal";
 import { SettingsRail } from "@/components/player/SettingsRail";
+import { NoteComposer } from "@/components/journal/NoteComposer";
 import { useApp } from "@/components/providers/AppProvider";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { BISMILLAH_TEXT } from "@/lib/queue";
@@ -25,6 +26,7 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
 
   const [listOpen, setListOpen] = useState(true);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const activeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -324,6 +326,17 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
               <Icon name="bookmark" size={17} filled={saved} />
             </button>
 
+            <button
+              type="button"
+              onClick={() => setNoteOpen(true)}
+              aria-label={t("note.add")}
+              title={t("note.add")}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 active:scale-90"
+            >
+              <Icon name="notepad" size={17} />
+            </button>
+
+
             <label className="ml-1 flex items-center gap-2">
               <Icon name="headphones" size={15} className="text-white/45" />
               <span className="sr-only">{t("majlis.volume")}</span>
@@ -352,6 +365,14 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
       />
 
       {journalOpen && <JournalModal onClose={() => setJournalOpen(false)} />}
+
+      {noteOpen && (
+        <NoteComposer
+          surah={track.surah}
+          ayah={track.ayah}
+          onClose={() => setNoteOpen(false)}
+        />
+      )}
     </div>
   );
 }

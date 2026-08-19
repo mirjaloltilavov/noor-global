@@ -98,7 +98,7 @@ interface PlayerValue {
   appendPassage: (p: Passage) => void;
 
   startVibe: (mood: MoodId, lead?: Passage | null) => void;
-  startSurah: (surah: number, verses: number) => void;
+  startSurah: (surah: number, verses: number, startAyah?: number) => void;
   continueSession: () => void;
   endSession: () => void;
   closePlayer: () => void;
@@ -335,8 +335,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
 
   const startSurah = useCallback(
-    (surah: number, verses: number) => {
-      writeQueue("player", surahPlan(surah, verses), 0);
+    (surah: number, verses: number, startAyah = 1) => {
+      const segs = surahPlan(surah, verses);
+      const pos = Math.max(
+        0,
+        flattenTracks(segs).findIndex((x) => x.ayah === startAyah)
+      );
+      writeQueue("player", segs, pos);
       setModeState("player");
       setAudioMode("player");
     },

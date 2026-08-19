@@ -54,6 +54,7 @@ interface AppValue {
     note: string;
     mood?: MoodId;
   }) => void;
+  updateJournal: (id: string, note: string) => void;
   removeJournal: (id: string) => void;
   history: PastSession[];
   pushHistory: (s: PastSession) => void;
@@ -124,6 +125,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateJournal = useCallback((id: string, note: string) => {
+    setJournal((prev) => {
+      const next = prev.map((x) => (x.id === id ? { ...x, note } : x));
+      saveJournal(next);
+      return next;
+    });
+  }, []);
+
   const removeJournal = useCallback((id: string) => {
     setJournal((prev) => {
       const next = prev.filter((x) => x.id !== id);
@@ -169,6 +178,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saved.some((x) => x.surah === surah && x.ayah === ayah),
       journal,
       addJournal,
+      updateJournal,
       removeJournal,
       history,
       pushHistory,
@@ -185,6 +195,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleSaved,
       journal,
       addJournal,
+      updateJournal,
       removeJournal,
       history,
       pushHistory,

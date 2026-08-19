@@ -9,6 +9,7 @@ import { ReflectionCard } from "@/components/player/ReflectionCard";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { SettingsRail } from "@/components/player/SettingsRail";
 import { VibeChip } from "@/components/player/VibeChip";
+import { NoteComposer } from "@/components/journal/NoteComposer";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -35,6 +36,7 @@ export function ReadingScene({
   const [controls, setControls] = useState(true);
   const [journalOpen, setJournalOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [showTip, setShowTip] = useState(false);
 
   const { segment, track, cursor, segments, segIndex, ayah, loading, error } =
@@ -246,6 +248,18 @@ export function ReadingScene({
                   <Icon name="bookmark" size={17} filled={saved} />
                 </button>
               )}
+
+              {track && (
+                <button
+                  type="button"
+                  onClick={() => setNoteOpen(true)}
+                  aria-label={t("note.add")}
+                  title={t("note.add")}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition hover:bg-white/15 active:scale-90"
+                >
+                  <Icon name="notepad" size={17} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -298,6 +312,14 @@ export function ReadingScene({
       />
 
       {moreOpen && <MoreLikeThis onClose={() => setMoreOpen(false)} />}
+
+      {noteOpen && track && (
+        <NoteComposer
+          surah={track.surah}
+          ayah={track.ayah}
+          onClose={() => setNoteOpen(false)}
+        />
+      )}
 
       {journalOpen && <JournalModal onClose={() => setJournalOpen(false)} />}
 

@@ -19,7 +19,7 @@ const ITEMS: NavItem[] = [
   { href: "/hadith", icon: "hadith", labelKey: "nav.hadith", soon: true },
   { href: "/ai", icon: "ai", labelKey: "nav.ai", soon: true },
   { href: "/tafsir", icon: "tafsir", labelKey: "nav.tafsir", soon: true },
-  { href: "/notepad", icon: "notepad", labelKey: "nav.notepad", soon: true },
+  { href: "/notepad", icon: "notepad", labelKey: "nav.notepad" },
 ];
 
 /** Desktopda chapdagi 88px ustun, mobilda pastdagi panel */
