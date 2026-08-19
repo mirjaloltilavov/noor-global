@@ -13,11 +13,14 @@ export const SURAHS: Record<
   1: { slug: "Al-Fatihah", arabic: "الفاتحة", verses: 7 },
   2: { slug: "Al-Baqarah", arabic: "البقرة", verses: 286 },
   3: { slug: "Ali 'Imran", arabic: "آل عمران", verses: 200 },
+  4: { slug: "An-Nisa", arabic: "النساء", verses: 176 },
   9: { slug: "At-Tawbah", arabic: "التوبة", verses: 129 },
   12: { slug: "Yusuf", arabic: "يوسف", verses: 111 },
   13: { slug: "Ar-Ra'd", arabic: "الرعد", verses: 43 },
   14: { slug: "Ibrahim", arabic: "إبراهيم", verses: 52 },
+  16: { slug: "An-Nahl", arabic: "النحل", verses: 128 },
   18: { slug: "Al-Kahf", arabic: "الكهف", verses: 110 },
+  20: { slug: "Ta-Ha", arabic: "طه", verses: 135 },
   39: { slug: "Az-Zumar", arabic: "الزمر", verses: 75 },
   65: { slug: "At-Talaq", arabic: "الطلاق", verses: 12 },
   66: { slug: "At-Tahrim", arabic: "التحريم", verses: 12 },
@@ -25,11 +28,56 @@ export const SURAHS: Record<
   94: { slug: "Ash-Sharh", arabic: "الشرح", verses: 8 },
 };
 
+/**
+ * Sessiya bir tekis ro'yxat emas — to'rt bosqichli sayohat:
+ * kelish → o'ylash → chuqurlashish → yakunlash.
+ */
+export type Stage = "arrival" | "reflection" | "deepening" | "closing";
+
+export const STAGES: Stage[] = [
+  "arrival",
+  "reflection",
+  "deepening",
+  "closing",
+];
+
+export const STAGE_LABEL: Record<Stage, L10n> = {
+  arrival: { uz: "Kelish", ru: "Прибытие", en: "Arrival" },
+  reflection: { uz: "O'ylash", ru: "Размышление", en: "Reflection" },
+  deepening: { uz: "Chuqurlashish", ru: "Углубление", en: "Deepening" },
+  closing: { uz: "Yakunlash", ru: "Завершение", en: "Closing" },
+};
+
+export const STAGE_SUB: Record<Stage, L10n> = {
+  arrival: {
+    uz: "Qalbni joyiga qo'yadigan qisqa parcha",
+    ru: "Короткий отрывок, чтобы успокоиться",
+    en: "A short passage to settle",
+  },
+  reflection: {
+    uz: "Niyatingizga bevosita tegishli parcha",
+    ru: "Отрывок, прямо связанный с вашим намерением",
+    en: "A passage tied to your intention",
+  },
+  deepening: {
+    uz: "Mavzuni kengaytiradigan ikkinchi parcha",
+    ru: "Второй отрывок, расширяющий тему",
+    en: "A second passage expanding the theme",
+  },
+  closing: {
+    uz: "Umid va tinchlik bilan yakun",
+    ru: "Завершение с надеждой и покоем",
+    en: "A hopeful, calming close",
+  },
+};
+
 export interface Passage {
   surah: number;
   from: number;
   to: number;
   minutes: number;
+  /** Sayohatdagi o'rni */
+  stage: Stage;
   /** Nega aynan shu parcha — olimlar izohiga asoslangan qisqa eslatma */
   note: L10n;
 }
@@ -72,16 +120,29 @@ export const MOODS: Mood[] = [
     label: { uz: "Xavotirdaman", ru: "Тревожно", en: "Anxious" },
     arabic: "قَلَق",
     title: {
-      uz: "Notinch qalb uchun tanlangan uch parcha",
-      ru: "Три отрывка для встревоженного сердца",
-      en: "Three passages, chosen for a heavy heart",
+      uz: "Notinch qalb uchun tayyorlangan sayohat",
+      ru: "Путь, подготовленный для встревоженного сердца",
+      en: "A journey prepared for a heavy heart",
     },
     passages: [
+      {
+        surah: 20,
+        from: 25,
+        to: 28,
+        minutes: 2,
+        stage: "arrival",
+        note: {
+          uz: "Muso alayhissalomning duosi — qiyin ish oldidan ko'ngilni kengaytirishni so'rash.",
+          ru: "Мольба Мусы (мир ему) — просьба раскрыть грудь перед трудным делом.",
+          en: "The prayer of Musa (peace be upon him) — asking for the chest to be opened before a hard task.",
+        },
+      },
       {
         surah: 13,
         from: 28,
         to: 28,
         minutes: 2,
+        stage: "reflection",
         note: {
           uz: "Bevosita notinch qalbga qaratilgan — klassik tafsirlar buni xavotirning davosi deb o'qigan.",
           ru: "Обращено прямо к беспокойному сердцу — классические тафсиры читают это как лекарство от тревоги.",
@@ -93,6 +154,7 @@ export const MOODS: Mood[] = [
         from: 1,
         to: 8,
         minutes: 3,
+        stage: "deepening",
         note: {
           uz: "Payg'ambarga ﷺ qiyinchilik onida tasalli sifatida nozil bo'lgan.",
           ru: "Ниспослано как утешение Пророку ﷺ в момент трудности.",
@@ -104,6 +166,7 @@ export const MOODS: Mood[] = [
         from: 286,
         to: 286,
         minutes: 2,
+        stage: "closing",
         note: {
           uz: "Ko'tarayotgan yukingiz aynan sizga o'lchab berilgani haqidagi eslatma.",
           ru: "Напоминание о том, что ноша, которую вы несёте, отмерена именно для вас.",
@@ -117,16 +180,29 @@ export const MOODS: Mood[] = [
     label: { uz: "Shukrdaman", ru: "Благодарно", en: "Grateful" },
     arabic: "شُكْر",
     title: {
-      uz: "Shukr qalbi uchun tanlangan uch parcha",
-      ru: "Три отрывка для благодарного сердца",
-      en: "Three passages, chosen for a grateful heart",
+      uz: "Shukr qalbi uchun tayyorlangan sayohat",
+      ru: "Путь для благодарного сердца",
+      en: "A journey for a grateful heart",
     },
     passages: [
+      {
+        surah: 16,
+        from: 18,
+        to: 18,
+        minutes: 2,
+        stage: "arrival",
+        note: {
+          uz: "Ne'matlarni sanashning imkoni yo'qligi — shukr shu yerdan boshlanadi.",
+          ru: "Милости невозможно сосчитать — с этого начинается благодарность.",
+          en: "The favours cannot be counted — gratitude begins here.",
+        },
+      },
       {
         surah: 14,
         from: 7,
         to: 7,
         minutes: 2,
+        stage: "reflection",
         note: {
           uz: "Shukrga berilgan aniq va'da — ko'proq shukr, ko'proq ziyoda.",
           ru: "Прямое обещание за благодарность — больше благодарности, больше прибавления.",
@@ -138,6 +214,7 @@ export const MOODS: Mood[] = [
         from: 1,
         to: 11,
         minutes: 3,
+        stage: "deepening",
         note: {
           uz: "Sura o'tmishdagi ne'matlarni sanab, shukrni yodga solish bilan tugaydi.",
           ru: "Сура перечисляет прошлые милости и завершается напоминанием о благодарности.",
@@ -149,6 +226,7 @@ export const MOODS: Mood[] = [
         from: 152,
         to: 152,
         minutes: 2,
+        stage: "closing",
         note: {
           uz: "Zikr o'zaro: Meni yodga oling — Men sizni yodga olaman.",
           ru: "Поминание взаимно: помните Меня — Я помяну вас.",
@@ -162,16 +240,29 @@ export const MOODS: Mood[] = [
     label: { uz: "Qayg'udaman", ru: "В горе", en: "Grieving" },
     arabic: "حُزْن",
     title: {
-      uz: "Qayg'uli qalb uchun tanlangan uch parcha",
-      ru: "Три отрывка для скорбящего сердца",
-      en: "Three passages, chosen for a grieving heart",
+      uz: "Qayg'uli qalb uchun tayyorlangan sayohat",
+      ru: "Путь для скорбящего сердца",
+      en: "A journey for a grieving heart",
     },
     passages: [
+      {
+        surah: 93,
+        from: 3,
+        to: 3,
+        minutes: 1,
+        stage: "arrival",
+        note: {
+          uz: "Vahiy to'xtagan og'ir kunlarda nozil bo'lgan: «Robbing seni tark etgani yo'q».",
+          ru: "Ниспослано в тяжёлые дни: «Не покинул тебя твой Господь».",
+          en: "Revealed in heavy days: your Lord has not forsaken you.",
+        },
+      },
       {
         surah: 2,
         from: 155,
         to: 157,
         minutes: 3,
+        stage: "reflection",
         note: {
           uz: "Sinov ta'rifi va sabr qilganlarga berilgan xushxabar bir joyda.",
           ru: "Описание испытания и радостная весть терпеливым — в одном месте.",
@@ -183,6 +274,7 @@ export const MOODS: Mood[] = [
         from: 40,
         to: 40,
         minutes: 2,
+        stage: "deepening",
         note: {
           uz: "G'or ichida aytilgan so'z: «G'am yema, Alloh biz bilan».",
           ru: "Слова, сказанные в пещере: «Не печалься, Аллах с нами».",
@@ -194,6 +286,7 @@ export const MOODS: Mood[] = [
         from: 86,
         to: 86,
         minutes: 2,
+        stage: "closing",
         note: {
           uz: "Ya'qub alayhissalom g'amini faqat Allohga shikoyat qiladi.",
           ru: "Йакуб (мир ему) жалуется на свою скорбь только Аллаху.",
@@ -207,16 +300,29 @@ export const MOODS: Mood[] = [
     label: { uz: "Pushaymonman", ru: "С сожалением", en: "Regretful" },
     arabic: "نَدَم",
     title: {
-      uz: "Pushaymon qalb uchun tanlangan uch parcha",
-      ru: "Три отрывка для раскаивающегося сердца",
-      en: "Three passages, chosen for a regretful heart",
+      uz: "Pushaymon qalb uchun tayyorlangan sayohat",
+      ru: "Путь для раскаивающегося сердца",
+      en: "A journey for a regretful heart",
     },
     passages: [
+      {
+        surah: 4,
+        from: 110,
+        to: 110,
+        minutes: 2,
+        stage: "arrival",
+        note: {
+          uz: "Eshik ochiq ekanini eslatadi — kechirim so'ragan kishi Allohni G'afur topadi.",
+          ru: "Напоминает, что дверь открыта — просящий прощения найдёт Аллаха Прощающим.",
+          en: "A reminder that the door is open — whoever seeks forgiveness finds Allah forgiving.",
+        },
+      },
       {
         surah: 39,
         from: 53,
         to: 53,
         minutes: 2,
+        stage: "reflection",
         note: {
           uz: "Ko'p mufassirlar buni Qur'ondagi eng keng umid oyati deb ataydi.",
           ru: "Многие комментаторы называют это самым широким аятом надежды в Коране.",
@@ -228,6 +334,7 @@ export const MOODS: Mood[] = [
         from: 135,
         to: 135,
         minutes: 2,
+        stage: "deepening",
         note: {
           uz: "Xato qilgach darhol Allohni eslash — taqvodorlarning belgisi.",
           ru: "Вспомнить Аллаха сразу после ошибки — признак богобоязненных.",
@@ -239,6 +346,7 @@ export const MOODS: Mood[] = [
         from: 8,
         to: 8,
         minutes: 3,
+        stage: "closing",
         note: {
           uz: "Chin tavba — «tavbatan nasuha» — nima ekanini bayon qiladi.",
           ru: "Определяет, что такое искреннее покаяние — «тауба насуха».",
@@ -252,16 +360,29 @@ export const MOODS: Mood[] = [
     label: { uz: "Yo'l izlayapman", ru: "Ищу руководство", en: "Seeking guidance" },
     arabic: "حَيْرَة",
     title: {
-      uz: "Yo'l izlayotgan qalb uchun tanlangan uch parcha",
-      ru: "Три отрывка для ищущего сердца",
-      en: "Three passages, chosen for a searching heart",
+      uz: "Yo'l izlayotgan qalb uchun tayyorlangan sayohat",
+      ru: "Путь для ищущего сердца",
+      en: "A journey for a searching heart",
     },
     passages: [
+      {
+        surah: 2,
+        from: 257,
+        to: 257,
+        minutes: 2,
+        stage: "arrival",
+        note: {
+          uz: "Alloh imon keltirganlarni zulmatdan nurga chiqaradi — yo'l izlashning boshlanishi.",
+          ru: "Аллах выводит верующих из мрака к свету — начало поиска пути.",
+          en: "Allah brings the believers out of darkness into light — where the search begins.",
+        },
+      },
       {
         surah: 18,
         from: 10,
         to: 10,
         minutes: 2,
+        stage: "reflection",
         note: {
           uz: "G'or yigitlarining duosi — rahmat va to'g'ri yo'l so'rash.",
           ru: "Мольба юношей пещеры — просьба о милости и верном пути.",
@@ -273,6 +394,7 @@ export const MOODS: Mood[] = [
         from: 186,
         to: 186,
         minutes: 2,
+        stage: "deepening",
         note: {
           uz: "Hukmlar orasida to'satdan keladigan yaqinlik oyati.",
           ru: "Аят близости, внезапно возникающий посреди предписаний.",
@@ -284,6 +406,7 @@ export const MOODS: Mood[] = [
         from: 1,
         to: 7,
         minutes: 3,
+        stage: "closing",
         note: {
           uz: "Kuniga o'n marta takrorlanadigan hidoyat so'rovi.",
           ru: "Просьба о руководстве, повторяемая десятки раз в день.",
@@ -301,16 +424,29 @@ export const MOODS: Mood[] = [
     },
     arabic: "خَوْف",
     title: {
-      uz: "Kelajakdan cho'chigan qalb uchun tanlangan uch parcha",
-      ru: "Три отрывка для сердца, боящегося будущего",
-      en: "Three passages, chosen for a heart afraid of what comes",
+      uz: "Kelajakdan cho'chigan qalb uchun tayyorlangan sayohat",
+      ru: "Путь для сердца, боящегося будущего",
+      en: "A journey for a heart afraid of what comes",
     },
     passages: [
+      {
+        surah: 3,
+        from: 160,
+        to: 160,
+        minutes: 2,
+        stage: "arrival",
+        note: {
+          uz: "Yordam Allohdan ekanini eslatib, qo'rquvni o'z o'lchoviga qaytaradi.",
+          ru: "Напоминает, что помощь — от Аллаха, и возвращает страху его меру.",
+          en: "Puts fear back in proportion: if Allah helps you, none can overcome you.",
+        },
+      },
       {
         surah: 65,
         from: 2,
         to: 3,
         minutes: 3,
+        stage: "reflection",
         note: {
           uz: "Chiqish yo'li va kutilmagan tomondan riziq va'dasi.",
           ru: "Обещание выхода и удела оттуда, откуда не ждёшь.",
@@ -322,6 +458,7 @@ export const MOODS: Mood[] = [
         from: 173,
         to: 173,
         minutes: 2,
+        stage: "deepening",
         note: {
           uz: "Qo'rquv onida aytilgan so'z: «Hasbunallohu va ni'mal vakiyl».",
           ru: "Слова, сказанные в момент страха: «Достаточно нам Аллаха».",
@@ -333,6 +470,7 @@ export const MOODS: Mood[] = [
         from: 51,
         to: 51,
         minutes: 2,
+        stage: "closing",
         note: {
           uz: "Bizga faqat Alloh yozgan narsa yetadi — tavakkulning asosi.",
           ru: "Нас постигает лишь то, что предписал Аллах — основа упования.",

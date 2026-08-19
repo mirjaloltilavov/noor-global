@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AyahText } from "@/components/player/AyahText";
+import { ClosingScreen } from "@/components/player/ClosingScreen";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { SettingsRail } from "@/components/player/SettingsRail";
 import { VibeChip } from "@/components/player/VibeChip";
@@ -9,7 +10,7 @@ import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { BISMILLAH_TEXT, totalMinutes } from "@/lib/queue";
-import { SURAHS, getMood } from "@/lib/sakinah";
+import { STAGE_LABEL, SURAHS, getMood } from "@/lib/sakinah";
 import { ARABIC_SIZES } from "@/lib/session";
 
 const IDLE_MS = 4000;
@@ -131,6 +132,11 @@ export function ReadingScene({
           }`}
         >
           <p className="mx-auto max-w-2xl text-xs leading-relaxed text-white/45">
+            {segment?.stage && (
+              <span className="tone-text mr-2 font-semibold uppercase tracking-wide">
+                {ln(STAGE_LABEL[segment.stage])}
+              </span>
+            )}
             {segment?.note ? ln(segment.note) : " "}
           </p>
         </div>
@@ -273,66 +279,13 @@ export function ReadingScene({
       <SettingsRail visible={controls} />
 
       {player.finished && vibe && (
-        <FinishPrompt
-          moodLabel={ln(getMood(vibe.mood).label)}
+        <ClosingScreen
           minutes={totalMinutes(segments)}
           onContinue={player.continueSession}
           onEnd={player.endSession}
         />
       )}
     </Stage>
-  );
-}
-
-function FinishPrompt({
-  moodLabel,
-  minutes,
-  onContinue,
-  onEnd,
-}: {
-  moodLabel: string;
-  minutes: number;
-  onContinue: () => void;
-  onEnd: () => void;
-}) {
-  const { t } = useApp();
-
-  return (
-    <div className="anim-fade-in fixed inset-0 z-40 flex items-center justify-center bg-night-base/75 p-6 backdrop-blur-md">
-      <div className="anim-pop w-full max-w-lg rounded-2xl border border-white/10 bg-night-panel/90 p-8 text-center shadow-panel">
-        <span className="tone-border mx-auto flex h-16 w-16 items-center justify-center rounded-full border">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-night-base">
-            <Icon name="check" size={16} />
-          </span>
-        </span>
-
-        <h2 className="mt-6 text-2xl font-semibold text-white">
-          {t("finish.title")}
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-white/60">
-          {t("finish.body", { mood: moodLabel, minutes })}
-        </p>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={onContinue}
-            className="tone-bg h-11 rounded-full px-7 text-sm font-semibold text-night-base transition hover:brightness-110 active:scale-95"
-          >
-            {t("finish.yes")}
-          </button>
-          <button
-            type="button"
-            onClick={onEnd}
-            className="h-11 rounded-full bg-white/10 px-7 text-sm font-medium text-white transition hover:bg-white/20 active:scale-95"
-          >
-            {t("finish.no")}
-          </button>
-        </div>
-
-        <p className="mt-4 text-xs text-white/35">{t("finish.noHint")}</p>
-      </div>
-    </div>
   );
 }
 

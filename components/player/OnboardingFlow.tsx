@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon } from "@/components/ui/Icon";
+import { planSegments, totalMinutes } from "@/lib/queue";
 import {
   DURATIONS,
   DURATION_ARABIC,
@@ -12,20 +13,22 @@ import {
   FORMATS,
   INTENTIONS,
   MOODS,
-  getReciter,
+  RECITERS,
+  STAGE_LABEL,
+  STAGE_SUB,
+  getMood,
   type Duration,
   type MoodId,
 } from "@/lib/sakinah";
 
-const STEPS = 4;
-const PREPARE_MS = 2200;
-/** «Boshlash» bosilgach yorug'lik ochilishi */
+/** Savollar: qalb → niyat → qanday → vaqt → ovoz */
+const STEPS = 5;
 const BLOOM_MS = 1500;
+/** Har tayyorlash qadami */
+const PREP_STEP_MS = 700;
 
-/**
- * Figmadagi Sakinah onboardingi (S2–S6): to'rtta ketma-ket savol,
- * tepada to'rt bo'lakli progress, so'ng «tayyorlanmoqda» ekrani.
- */
+type Phase = "bloom" | "questions" | "preparing" | "why";
+
 export function OnboardingFlow({
   initialMood,
   onBegin,
@@ -37,29 +40,15 @@ export function OnboardingFlow({
 }) {
   const { t, ln, prefs, setPrefs } = useApp();
 
-  // -1 — yorug'lik ochilishi, 0..3 — savollar, 4 — tayyorlanish
-  const [step, setStep] = useState(-1);
+  const [phase, setPhase] = useState<Phase>("bloom");
+  const [step, setStep] = useState(0);
   const [mood, setMood] = useState<MoodId>(initialMood ?? "anxious");
 
-  // Yorug'lik tugagach birinchi savol
   useEffect(() => {
-    if (step !== -1) return;
-    const id = window.setTimeout(() => setStep(0), BLOOM_MS);
+    if (phase !== "bloom") return;
+    const id = window.setTimeout(() => setPhase("questions"), BLOOM_MS);
     return () => window.clearTimeout(id);
-  }, [step]);
-
-  // Oxirgi qadam — tayyorlanish, so'ng tilovat boshlanadi.
-  // onBegin/mood ref orqali o'qiladi, aks holda har renderda taymer tiklanadi.
-  const beginRef = useRef(onBegin);
-  const moodRef = useRef(mood);
-  beginRef.current = onBegin;
-  moodRef.current = mood;
-
-  useEffect(() => {
-    if (step !== STEPS) return;
-    const id = window.setTimeout(() => beginRef.current(moodRef.current), PREPARE_MS);
-    return () => window.clearTimeout(id);
-  }, [step]);
+  }, [phase]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -69,8 +58,16 @@ export function OnboardingFlow({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const back = () => (step <= 0 ? onClose() : setStep((s) => s - 1));
-  const forward = () => setStep((s) => s + 1);
+  const back = () => {
+    if (phase === "why") return setPhase("questions");
+    if (step <= 0) return onClose();
+    setStep((v) => v - 1);
+  };
+
+  const forward = () => {
+    if (step + 1 >= STEPS) setPhase("preparing");
+    else setStep((v) => v + 1);
+  };
 
   return (
     <div className="fixed inset-0 z-50">
@@ -80,13 +77,12 @@ export function OnboardingFlow({
         reduceMotion={prefs.reduceMotion}
       >
         <div className="flex h-screen flex-col">
-          {step === -1 && <Bloom />}
+          {phase === "bloom" && <Bloom />}
 
-          {/* Yuqori qator */}
           <header
             className={[
-              "flex items-center gap-4 px-4 py-5 transition-opacity duration-500 sm:px-8",
-              step === -1 ? "opacity-0" : "opacity-100",
+              "flex shrink-0 items-center gap-4 px-4 py-5 transition-opacity duration-500 sm:px-8",
+              phase === "bloom" ? "opacity-0" : "opacity-100",
             ].join(" ")}
           >
             <button
@@ -104,11 +100,20 @@ export function OnboardingFlow({
               {Array.from({ length: STEPS }).map((_, i) => (
                 <span
                   key={i}
-                  className="h-[3px] w-8 overflow-hidden rounded-full bg-white/15 sm:w-12"
+                  className="h-[3px] w-7 overflow-hidden rounded-full bg-white/15 sm:w-10"
                 >
                   <span
                     className="tone-bg block h-full rounded-full transition-all duration-500"
-                    style={{ width: step >= 0 && i <= step ? "100%" : "0%" }}
+                    style={{
+                      width:
+                        phase === "questions"
+                          ? i <= step
+                            ? "100%"
+                            : "0%"
+                          : phase === "bloom"
+                            ? "0%"
+                            : "100%",
+                    }}
                   />
                 </span>
               ))}
@@ -124,12 +129,18 @@ export function OnboardingFlow({
             </button>
           </header>
 
-          {step === STEPS ? (
-            <Preparing />
-          ) : (
+          {phase === "preparing" && (
+            <Preparing onDone={() => setPhase("why")} />
+          )}
+
+          {phase === "why" && (
+            <WhyThis mood={mood} onBegin={() => onBegin(mood)} />
+          )}
+
+          {phase === "questions" && (
             <div
               key={step}
-              className="sk-scroll anim-fade-up flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8 sm:px-8"
+              className="sk-scroll anim-fade-up flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8 sm:px-8"
             >
               {step === 0 && (
                 <Question
@@ -137,9 +148,7 @@ export function OnboardingFlow({
                   sub={t("q.mood.sub")}
                   cta={t("q.continue")}
                   onNext={forward}
-                  onSkip={forward}
                   footer={t("q.mood.footer")}
-                  columns={3}
                 >
                   {MOODS.map((m) => (
                     <Card
@@ -159,16 +168,14 @@ export function OnboardingFlow({
                   sub={t("q.intention.sub")}
                   cta={t("q.continue")}
                   onNext={forward}
-                  onSkip={forward}
-                  columns={3}
                 >
-                  {INTENTIONS.map((i) => (
+                  {INTENTIONS.map((x) => (
                     <Card
-                      key={i.id}
-                      title={ln(i.label)}
-                      arabic={i.arabic}
-                      selected={prefs.intention === i.id}
-                      onClick={() => setPrefs({ intention: i.id })}
+                      key={x.id}
+                      title={ln(x.label)}
+                      arabic={x.arabic}
+                      selected={prefs.intention === x.id}
+                      onClick={() => setPrefs({ intention: x.id })}
                     />
                   ))}
                 </Question>
@@ -176,12 +183,30 @@ export function OnboardingFlow({
 
               {step === 2 && (
                 <Question
+                  title={t("q.format.title")}
+                  sub={t("q.format.sub")}
+                  cta={t("q.continue")}
+                  onNext={forward}
+                >
+                  {FORMATS.map((x) => (
+                    <Card
+                      key={x.id}
+                      title={ln(x.label)}
+                      sub={ln(x.sub)}
+                      arabic={x.arabic}
+                      selected={prefs.format === x.id}
+                      onClick={() => setPrefs({ format: x.id })}
+                    />
+                  ))}
+                </Question>
+              )}
+
+              {step === 3 && (
+                <Question
                   title={t("q.time.title")}
                   sub={t("q.time.sub")}
                   cta={t("q.continue")}
                   onNext={forward}
-                  onSkip={forward}
-                  columns={2}
                 >
                   {DURATIONS.map((d) => (
                     <Card
@@ -196,26 +221,21 @@ export function OnboardingFlow({
                 </Question>
               )}
 
-              {step === 3 && (
+              {step === 4 && (
                 <Question
-                  title={t("q.format.title")}
-                  sub={t("q.format.sub")}
+                  title={t("q.voice.title")}
+                  sub={t("q.voice.sub")}
                   cta={t("q.prepare")}
                   onNext={forward}
-                  onSkip={forward}
-                  footer={t("q.format.footer", {
-                    reciter: getReciter(prefs.reciter).name,
-                  })}
-                  columns={2}
                 >
-                  {FORMATS.map((f) => (
+                  {RECITERS.map((r) => (
                     <Card
-                      key={f.id}
-                      title={ln(f.label)}
-                      sub={ln(f.sub)}
-                      arabic={f.arabic}
-                      selected={prefs.format === f.id}
-                      onClick={() => setPrefs({ format: f.id })}
+                      key={r.id}
+                      title={r.name}
+                      sub={`${ln(r.style)} · ${ln(r.place)}`}
+                      arabic=""
+                      selected={prefs.reciter === r.id}
+                      onClick={() => setPrefs({ reciter: r.id })}
                     />
                   ))}
                 </Question>
@@ -228,34 +248,201 @@ export function OnboardingFlow({
   );
 }
 
-/* ——————————————————————————————————————————————————————— */
+/* ——— «Nega aynan shular» ————————————————————————————— */
+
+function WhyThis({
+  mood,
+  onBegin,
+}: {
+  mood: MoodId;
+  onBegin: () => void;
+}) {
+  const { t, ln, prefs } = useApp();
+  const m = getMood(mood);
+  const plan = planSegments(m, prefs.duration);
+  const journey = m.passages;
+
+  const intention = INTENTIONS.find((x) => x.id === prefs.intention);
+  const timeLabel = ln(DURATION_LABELS[prefs.duration]);
+
+  const tags = [
+    ln(m.label),
+    intention ? ln(intention.label) : "",
+    timeLabel,
+  ].filter(Boolean);
+
+  return (
+    <div className="sk-scroll anim-fade-up min-h-0 flex-1 overflow-y-auto px-4 pb-8 sm:px-8">
+      <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center">
+        <p className="text-center text-xs uppercase tracking-widest text-white/35">
+          {t("why.title")}
+        </p>
+
+        <p className="mt-4 text-center text-lg leading-relaxed text-white/70">
+          {t("why.recap", {
+            mood: ln(m.label).toLowerCase(),
+            intention: intention ? ln(intention.label).toLowerCase() : "",
+            time: timeLabel.toLowerCase(),
+          })}
+        </p>
+
+        <h2 className="mt-6 text-center text-2xl font-semibold leading-snug tracking-tightest text-white sm:text-3xl">
+          {ln(m.title)}
+        </h2>
+
+        {/* Nega shular — teglar */}
+        <div className="mt-8">
+          <p className="text-xs uppercase tracking-wide text-white/35">
+            {t("why.selected")}
+          </p>
+          <div className="anim-stagger mt-3 flex flex-wrap gap-2">
+            {tags.map((x) => (
+              <span
+                key={x}
+                className="tone-bg-soft tone-text inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm"
+              >
+                <Icon name="sparkle" size={13} />
+                {x}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Sayohat — to'rt bosqich */}
+        <div className="mt-8">
+          <p className="text-xs uppercase tracking-wide text-white/35">
+            {t("why.journeyTitle", { minutes: timeLabel })}
+          </p>
+
+          <ol className="anim-stagger mt-3 space-y-2">
+            {journey.map((p, i) => (
+              <li
+                key={`${p.surah}-${p.from}`}
+                className="flex gap-3 rounded-xl border border-white/[0.07] bg-white/[0.04] px-4 py-3"
+              >
+                <span className="tone-text w-6 shrink-0 text-xs font-semibold tabular-nums">
+                  0{i + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-white">
+                    {ln(STAGE_LABEL[p.stage])}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-white/45">
+                    {ln(STAGE_SUB[p.stage])}
+                  </span>
+                  <span className="mt-1.5 block text-xs leading-relaxed text-white/60">
+                    {ln(p.note)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={onBegin}
+            className="tone-bg h-12 rounded-full px-10 text-base font-semibold text-night-base transition hover:brightness-110 active:scale-95"
+          >
+            {t("why.begin")}
+          </button>
+          <p className="text-[11px] text-white/30">
+            ≈ {totalMinutes(plan)} · {t("entry.reviewed")}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ——— Tayyorlash — bosqichma-bosqich ————————————————— */
+
+function Preparing({ onDone }: { onDone: () => void }) {
+  const { t } = useApp();
+  const [i, setI] = useState(0);
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+
+  const steps = [t("prep.step1"), t("prep.step2"), t("prep.step3")];
+
+  useEffect(() => {
+    const timers: number[] = [];
+    for (let k = 1; k <= steps.length; k++) {
+      timers.push(window.setTimeout(() => setI(k), PREP_STEP_MS * k));
+    }
+    timers.push(
+      window.setTimeout(
+        () => doneRef.current(),
+        PREP_STEP_MS * (steps.length + 1)
+      )
+    );
+    return () => timers.forEach((x) => window.clearTimeout(x));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="anim-fade-in flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
+      <span className="relative flex h-16 w-16 items-center justify-center">
+        <span className="tone-bg-soft anim-breathe absolute inset-0 rounded-full" />
+        <span className="tone-bg relative h-2.5 w-2.5 rounded-full" />
+      </span>
+
+      <ol className="mt-8 space-y-2">
+        {steps.map((s, k) => (
+          <li
+            key={s}
+            className="flex items-center justify-center gap-2 text-sm transition-all duration-500"
+            style={{ opacity: k < i ? 1 : k === i ? 0.6 : 0.2 }}
+          >
+            {k < i ? (
+              <Icon name="check" size={14} className="tone-text" />
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+            )}
+            <span className="text-white/85">{s}</span>
+          </li>
+        ))}
+      </ol>
+
+      <p className="arabic mt-10 font-arabic text-3xl text-white">
+        رَبِّ زِدْنِي عِلْمًا
+      </p>
+      <p className="mt-2 text-sm text-white/45">{t("prep.duaTr")}</p>
+
+      <p className="mt-10 max-w-sm text-[11px] leading-relaxed text-white/25">
+        {t("prep.honest")}
+      </p>
+    </div>
+  );
+}
+
+/* ——— Yordamchilar ————————————————————————————————— */
+
+function Bloom() {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <span className="sk-bloom-rays absolute h-[140vmax] w-[140vmax] rounded-full" />
+      <span className="sk-bloom-core absolute h-[70vmax] w-[70vmax] rounded-full" />
+    </div>
+  );
+}
 
 function Question({
   title,
   sub,
   cta,
   onNext,
-  onSkip,
   footer,
-  columns,
   children,
 }: {
   title: string;
   sub: string;
   cta: string;
   onNext: () => void;
-  onSkip: () => void;
   footer?: string;
-  columns: 2 | 3;
   children: React.ReactNode;
 }) {
-  const { t } = useApp();
-
-  const grid =
-    columns === 3
-      ? "sm:grid-cols-2 lg:grid-cols-3"
-      : "sm:grid-cols-2 lg:grid-cols-3";
-
   return (
     <div className="w-full max-w-4xl text-center">
       <h1 className="text-3xl font-semibold tracking-tightest text-white sm:text-4xl lg:text-[46px]">
@@ -263,7 +450,9 @@ function Question({
       </h1>
       <p className="mt-3 text-sm text-white/55">{sub}</p>
 
-      <div className={`anim-stagger mt-9 grid gap-3 ${grid}`}>{children}</div>
+      <div className="anim-stagger mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {children}
+      </div>
 
       <div className="mt-10 flex flex-col items-center gap-3">
         <button
@@ -272,13 +461,6 @@ function Question({
           className="tone-bg h-12 rounded-full px-10 text-base font-semibold text-night-base transition hover:brightness-110 active:scale-95"
         >
           {cta}
-        </button>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-xs text-white/45 transition hover:text-white/80"
-        >
-          {t("q.skip")}
         </button>
       </div>
 
@@ -319,53 +501,21 @@ function Card({
     >
       <span className="flex items-start justify-between gap-3">
         <span className="text-base font-semibold text-white">{title}</span>
-        <span
-          className="arabic shrink-0 font-arabic text-lg text-white/35"
-          aria-hidden="true"
-        >
-          {arabic}
-        </span>
+        {arabic && (
+          <span
+            className="arabic shrink-0 font-arabic text-lg text-white/35"
+            aria-hidden="true"
+          >
+            {arabic}
+          </span>
+        )}
       </span>
 
-      {sub && (
-        <span className="mt-1 text-xs text-white/45">{sub}</span>
-      )}
+      {sub && <span className="mt-1 text-xs text-white/45">{sub}</span>}
 
       {selected && (
         <span className="tone-bg anim-fade-in absolute bottom-3 left-5 h-1.5 w-1.5 rounded-full" />
       )}
     </button>
-  );
-}
-
-/** «Boshlash» bosilgach — yorug'lik ochilishi */
-function Bloom() {
-  return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <span className="sk-bloom-rays absolute h-[140vmax] w-[140vmax] rounded-full" />
-      <span className="sk-bloom-core absolute h-[70vmax] w-[70vmax] rounded-full" />
-    </div>
-  );
-}
-
-/** S6 · Tayyorlanmoqda */
-function Preparing() {
-  const { t } = useApp();
-
-  return (
-    <div className="anim-fade-in flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center">
-      <span className="relative flex h-20 w-20 items-center justify-center">
-        <span className="tone-bg-soft anim-breathe absolute inset-0 rounded-full" />
-        <span className="tone-bg relative h-3 w-3 rounded-full" />
-      </span>
-
-      <p className="mt-8 text-lg font-medium text-white/90">{t("prep.title")}</p>
-
-      <p className="arabic mt-8 font-arabic text-3xl text-white sm:text-4xl">
-        رَبِّ زِدْنِي عِلْمًا
-      </p>
-      <p className="mt-3 text-sm text-white/55">{t("prep.dua")}</p>
-      <p className="mt-1 text-sm text-white/40">{t("prep.duaTr")}</p>
-    </div>
   );
 }

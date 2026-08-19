@@ -1,4 +1,4 @@
-import { SURAHS, type L10n, type Mood } from "./sakinah";
+import { SURAHS, type L10n, type Mood, type Stage } from "./sakinah";
 
 /** Bir oyatning o'rtacha tilovat vaqti (daqiqa) — navbat rejasini tuzish uchun */
 const MINUTES_PER_AYAH = 0.4;
@@ -13,6 +13,8 @@ export interface Segment {
   minutes: number;
   /** "vibe" — kayfiyat bo'yicha kuratsiya qilingan parcha, "surah" — davomi */
   kind: "vibe" | "surah";
+  /** Sayohat bosqichi — faqat kuratsiya qilingan parchalarda */
+  stage?: Stage;
   note?: L10n;
 }
 
@@ -65,6 +67,7 @@ export function planSegments(mood: Mood, minutes: number): Segment[] {
     to: p.to,
     minutes: p.minutes,
     kind: "vibe",
+    stage: p.stage,
     note: p.note,
   }));
 
