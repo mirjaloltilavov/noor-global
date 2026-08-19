@@ -69,6 +69,8 @@ export function ReadingScene({
     return () => window.clearTimeout(id);
   }, [segIndex]);
 
+  // «Faqat tinglash» — ekranda matn yo'q; «tushunish» — tarjima bilan
+  const showArabic = prefs.format !== "listen";
   const showTranslation = prefs.showTranslation && prefs.format !== "listen";
   const showTransliteration =
     prefs.showTransliteration && prefs.format !== "listen";
@@ -161,7 +163,21 @@ export function ReadingScene({
               <p className="text-sm text-white/70">{t("common.error")}</p>
             )}
 
-            {cursor.bismillah && (
+            {!showArabic && !loading && (
+              <div className="anim-fade-in">
+                <p className="tone-text text-sm font-semibold tracking-wide">
+                  {cursor.bismillah
+                    ? "Bismillah"
+                    : track && `${surahName} ${track.surah}:${track.ayah}`}
+                </p>
+                <span className="tone-bg-soft anim-breathe mx-auto mt-8 block h-16 w-16 rounded-full" />
+                <p className="mx-auto mt-8 max-w-md text-xs leading-relaxed text-white/35">
+                  {t("read.listenOnly")}
+                </p>
+              </div>
+            )}
+
+            {showArabic && cursor.bismillah && (
               <p
                 className="arabic font-arabic text-white"
                 style={{
@@ -173,7 +189,7 @@ export function ReadingScene({
               </p>
             )}
 
-            {ayah && !cursor.bismillah && (
+            {showArabic && ayah && !cursor.bismillah && (
               <>
                 <AyahText
                   ayah={ayah}
@@ -281,7 +297,7 @@ export function ReadingScene({
               }
               total={segments.filter((s) => s.kind === "vibe").length}
               onRetune={onRetune}
-              onRestart={() => player.startVibe(vibe.mood)}
+              onRestart={() => player.startVibe(vibe.moods ?? [vibe.mood])}
               onExit={() => setVibe(null)}
             />
           </div>

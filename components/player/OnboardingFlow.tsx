@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon } from "@/components/ui/Icon";
+import { matchIntent } from "@/lib/intent";
 import { planSegments, totalMinutes } from "@/lib/queue";
 import {
   DURATIONS,
@@ -16,22 +17,27 @@ import {
   RECITERS,
   STAGE_LABEL,
   STAGE_SUB,
-  getMood,
-  type Duration,
   THEME_LABEL,
+  getMood,
+  intentionThemes,
   passageRef,
+  type Duration,
+  type IntentionId,
   type MoodId,
   type Passage,
+  type ThemeId,
 } from "@/lib/sakinah";
-import { matchIntent } from "@/lib/intent";
 
-/** Savollar: qalb → niyat → qanday → vaqt → ovoz */
-const STEPS = 5;
+/** Qalb → niyat → vaqt → qanday. Erkin matn va qori — ixtiyoriy. */
+const STEPS = 4;
 const BLOOM_MS = 1500;
 /** Har tayyorlash qadami */
 const PREP_STEP_MS = 700;
 
 type Phase = "bloom" | "questions" | "preparing" | "why";
+
+/** «Bilmayman» — alohida karta, qolganlaridan ajratib ko'rsatiladi */
+const UNSURE: MoodId = "unsure";
 
 export function OnboardingFlow({
   initialMood,
@@ -39,14 +45,16 @@ export function OnboardingFlow({
   onClose,
 }: {
   initialMood: MoodId | null;
-  onBegin: (mood: MoodId, lead?: Passage | null) => void;
+  onBegin: (moods: MoodId[], lead?: Passage | null) => void;
   onClose: () => void;
 }) {
   const { t, ln, prefs, setPrefs } = useApp();
 
   const [phase, setPhase] = useState<Phase>("bloom");
   const [step, setStep] = useState(0);
-  const [mood, setMood] = useState<MoodId>(initialMood ?? "anxious");
+  const [moods, setMoods] = useState<MoodId[]>(
+    initialMood ? [initialMood] : []
+  );
   // Erkin matn orqali tanlangan parcha — sayohat shundan boshlanadi
   const [lead, setLead] = useState<Passage | null>(null);
 
@@ -73,6 +81,27 @@ export function OnboardingFlow({
   const forward = () => {
     if (step + 1 >= STEPS) setPhase("preparing");
     else setStep((v) => v + 1);
+  };
+
+  /** Holatni qo'shish/olib tashlash. «Bilmayman» boshqalari bilan birga bo'lmaydi. */
+  const toggleMood = (id: MoodId) => {
+    setLead(null);
+    setMoods((prev) => {
+      if (id === UNSURE) return prev.includes(UNSURE) ? [] : [UNSURE];
+      const without = prev.filter((x) => x !== UNSURE);
+      return without.includes(id)
+        ? without.filter((x) => x !== id)
+        : [...without, id];
+    });
+  };
+
+  const toggleIntention = (id: IntentionId) => {
+    const prev = prefs.intentions;
+    setPrefs({
+      intentions: prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id],
+    });
   };
 
   return (
@@ -140,7 +169,11 @@ export function OnboardingFlow({
           )}
 
           {phase === "why" && (
-            <WhyThis mood={mood} onBegin={() => onBegin(mood, lead)} />
+            <WhyThis
+              moods={moods}
+              lead={lead}
+              onBegin={() => onBegin(moods, lead)}
+            />
           )}
 
           {phase === "questions" && (
@@ -152,30 +185,51 @@ export function OnboardingFlow({
                 <Question
                   title={t("q.mood.title")}
                   sub={t("q.mood.sub")}
+                  hint={t("q.multi")}
                   cta={t("q.continue")}
                   onNext={forward}
+                  onSkip={() => {
+                    setMoods([]);
+                    setLead(null);
+                    forward();
+                  }}
                   footer={t("q.mood.footer")}
                   extra={
-                    <AskFreely
-                      lead={lead}
-                      onPick={(p, m) => {
-                        setLead(p);
-                        setMood(m);
-                      }}
-                      onClear={() => setLead(null)}
-                    />
+                    <>
+                      <div className="anim-stagger mt-3">
+                        <Card
+                          title={ln(getMood(UNSURE).label)}
+                          arabic={getMood(UNSURE).arabic}
+                          selected={moods.includes(UNSURE)}
+                          onClick={() => toggleMood(UNSURE)}
+                          wide
+                        />
+                      </div>
+
+                      <Expandable label={t("heart.expand")}>
+                        <HeartNote
+                          lead={lead}
+                          onPick={(p, m) => {
+                            setLead(p);
+                            setMoods((prev) =>
+                              prev.includes(m)
+                                ? prev
+                                : [...prev.filter((x) => x !== UNSURE), m]
+                            );
+                          }}
+                          onClear={() => setLead(null)}
+                        />
+                      </Expandable>
+                    </>
                   }
                 >
-                  {MOODS.map((m) => (
+                  {MOODS.filter((m) => m.id !== UNSURE).map((m) => (
                     <Card
                       key={m.id}
                       title={ln(m.label)}
                       arabic={m.arabic}
-                      selected={mood === m.id}
-                      onClick={() => {
-                        setMood(m.id);
-                        setLead(null);
-                      }}
+                      selected={moods.includes(m.id)}
+                      onClick={() => toggleMood(m.id)}
                     />
                   ))}
                 </Question>
@@ -185,16 +239,34 @@ export function OnboardingFlow({
                 <Question
                   title={t("q.intention.title")}
                   sub={t("q.intention.sub")}
+                  hint={t("q.multi")}
                   cta={t("q.continue")}
                   onNext={forward}
+                  onSkip={() => {
+                    setPrefs({ intentions: [], intentionNote: "" });
+                    forward();
+                  }}
+                  extra={
+                    <Expandable label={t("intent.other")}>
+                      <textarea
+                        rows={3}
+                        value={prefs.intentionNote}
+                        onChange={(e) =>
+                          setPrefs({ intentionNote: e.target.value })
+                        }
+                        placeholder={t("intent.otherPlaceholder")}
+                        className="sk-scroll w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-relaxed text-white outline-none transition placeholder:text-white/25 focus:border-white/30"
+                      />
+                    </Expandable>
+                  }
                 >
                   {INTENTIONS.map((x) => (
                     <Card
                       key={x.id}
                       title={ln(x.label)}
                       arabic={x.arabic}
-                      selected={prefs.intention === x.id}
-                      onClick={() => setPrefs({ intention: x.id })}
+                      selected={prefs.intentions.includes(x.id)}
+                      onClick={() => toggleIntention(x.id)}
                     />
                   ))}
                 </Question>
@@ -202,30 +274,11 @@ export function OnboardingFlow({
 
               {step === 2 && (
                 <Question
-                  title={t("q.format.title")}
-                  sub={t("q.format.sub")}
-                  cta={t("q.continue")}
-                  onNext={forward}
-                >
-                  {FORMATS.map((x) => (
-                    <Card
-                      key={x.id}
-                      title={ln(x.label)}
-                      sub={ln(x.sub)}
-                      arabic={x.arabic}
-                      selected={prefs.format === x.id}
-                      onClick={() => setPrefs({ format: x.id })}
-                    />
-                  ))}
-                </Question>
-              )}
-
-              {step === 3 && (
-                <Question
                   title={t("q.time.title")}
                   sub={t("q.time.sub")}
                   cta={t("q.continue")}
                   onNext={forward}
+                  onSkip={forward}
                 >
                   {DURATIONS.map((d) => (
                     <Card
@@ -240,21 +293,51 @@ export function OnboardingFlow({
                 </Question>
               )}
 
-              {step === 4 && (
+              {step === 3 && (
                 <Question
-                  title={t("q.voice.title")}
-                  sub={t("q.voice.sub")}
+                  title={t("q.format.title")}
+                  sub={t("q.format.sub")}
                   cta={t("q.prepare")}
                   onNext={forward}
+                  onSkip={forward}
+                  extra={
+                    <Expandable label={t("q.voice.title")}>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Card
+                          title={t("voice.auto")}
+                          sub={t("voice.autoSub")}
+                          arabic=""
+                          selected={prefs.reciterAuto}
+                          onClick={() => setPrefs({ reciterAuto: true })}
+                        />
+                        {RECITERS.map((r) => (
+                          <Card
+                            key={r.id}
+                            title={r.name}
+                            sub={`${ln(r.style)} · ${ln(r.place)}`}
+                            arabic=""
+                            selected={!prefs.reciterAuto && prefs.reciter === r.id}
+                            onClick={() =>
+                              setPrefs({ reciter: r.id, reciterAuto: false })
+                            }
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-3 text-center text-[11px] text-white/30">
+                        {t("voice.anytime")}
+                      </p>
+                    </Expandable>
+                  }
                 >
-                  {RECITERS.map((r) => (
+                  {FORMATS.map((x) => (
                     <Card
-                      key={r.id}
-                      title={r.name}
-                      sub={`${ln(r.style)} · ${ln(r.place)}`}
-                      arabic=""
-                      selected={prefs.reciter === r.id}
-                      onClick={() => setPrefs({ reciter: r.id })}
+                      key={x.id}
+                      title={ln(x.label)}
+                      sub={ln(x.sub)}
+                      arabic={x.arabic}
+                      selected={prefs.format === x.id}
+                      disabled={x.pending}
+                      onClick={() => setPrefs({ format: x.id })}
                     />
                   ))}
                 </Question>
@@ -270,23 +353,58 @@ export function OnboardingFlow({
 /* ——— «Nega aynan shular» ————————————————————————————— */
 
 function WhyThis({
-  mood,
+  moods,
+  lead,
   onBegin,
 }: {
-  mood: MoodId;
+  moods: MoodId[];
+  lead: Passage | null;
   onBegin: () => void;
 }) {
   const { t, ln, prefs } = useApp();
-  const m = getMood(mood);
-  const plan = planSegments(m, prefs.duration);
-  const journey = m.passages;
 
-  const intention = INTENTIONS.find((x) => x.id === prefs.intention);
+  const list = (moods.length > 0 ? moods : [UNSURE]).map(getMood);
+  const primary = list[0];
+
+  const plan = planSegments(list, prefs.duration, {
+    lead,
+    themes: intentionThemes(prefs.intentions),
+  });
+  const journey = plan.filter((s) => s.kind === "vibe").slice(0, 6);
+
   const timeLabel = ln(DURATION_LABELS[prefs.duration]);
+  const intentions = prefs.intentions.map((id) =>
+    INTENTIONS.find((x) => x.id === id)
+  );
+
+  // «Siz … aytdingiz» — faqat javob berilgan qismlardan yig'iladi
+  const said = [
+    moods.length > 0
+      ? t("why.said.mood", {
+          x: list.map((m) => ln(m.label)).join(", "),
+        })
+      : "",
+    intentions.length > 0
+      ? t("why.said.intention", {
+          x: intentions
+            .map((x) => (x ? ln(x.label) : ""))
+            .filter(Boolean)
+            .join(", "),
+        })
+      : "",
+    t("why.said.time", { x: timeLabel }),
+  ].filter(Boolean);
+
+  // Bugun nima haqida — sayohatdagi mavzular
+  const themes: ThemeId[] = [];
+  for (const m of list)
+    for (const p of m.passages)
+      for (const th of p.themes) if (!themes.includes(th)) themes.push(th);
+  const topThemes = themes.slice(0, 3);
 
   const tags = [
-    ln(m.label),
-    intention ? ln(intention.label) : "",
+    ...list.map((m) => ln(m.label)),
+    ...intentions.map((x) => (x ? ln(x.label) : "")),
     timeLabel,
   ].filter(Boolean);
 
@@ -298,16 +416,20 @@ function WhyThis({
         </p>
 
         <p className="mt-4 text-center text-lg leading-relaxed text-white/70">
-          {t("why.recap", {
-            mood: ln(m.label).toLowerCase(),
-            intention: intention ? ln(intention.label).toLowerCase() : "",
-            time: timeLabel.toLowerCase(),
-          })}
+          {t("why.frame", { parts: said.join("; ") })}
         </p>
 
         <h2 className="mt-6 text-center text-2xl font-semibold leading-snug tracking-tightest text-white sm:text-3xl">
-          {ln(m.title)}
+          {ln(primary.title)}
         </h2>
+
+        <p className="mt-4 text-center text-sm leading-relaxed text-white/55">
+          {topThemes.length > 0
+            ? t("why.tonight", {
+                themes: topThemes.map((x) => ln(THEME_LABEL[x]).toLowerCase()).join(", "),
+              })
+            : t("why.tonightPlain")}
+        </p>
 
         {/* Nega shular — teglar */}
         <div className="mt-8">
@@ -327,7 +449,7 @@ function WhyThis({
           </div>
         </div>
 
-        {/* Sayohat — to'rt bosqich */}
+        {/* Sayohat — bosqichma-bosqich */}
         <div className="mt-8">
           <p className="text-xs uppercase tracking-wide text-white/35">
             {t("why.journeyTitle", { minutes: timeLabel })}
@@ -344,14 +466,16 @@ function WhyThis({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-white">
-                    {ln(STAGE_LABEL[p.stage])}
+                    {p.stage ? ln(STAGE_LABEL[p.stage]) : ""}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-white/45">
-                    {ln(STAGE_SUB[p.stage])}
+                    {p.stage ? ln(STAGE_SUB[p.stage]) : ""}
                   </span>
-                  <span className="mt-1.5 block text-xs leading-relaxed text-white/60">
-                    {ln(p.note)}
-                  </span>
+                  {p.note && (
+                    <span className="mt-1.5 block text-xs leading-relaxed text-white/60">
+                      {ln(p.note)}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}
@@ -393,12 +517,14 @@ function Preparing({ onDone }: { onDone: () => void }) {
     timers.push(
       window.setTimeout(
         () => doneRef.current(),
-        PREP_STEP_MS * (steps.length + 1)
+        PREP_STEP_MS * (steps.length + 2)
       )
     );
     return () => timers.forEach((x) => window.clearTimeout(x));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const ready = i >= steps.length;
 
   return (
     <div className="anim-fade-in flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
@@ -424,7 +550,14 @@ function Preparing({ onDone }: { onDone: () => void }) {
         ))}
       </ol>
 
-      <p className="arabic mt-10 font-arabic text-3xl text-white">
+      <p
+        className="tone-text mt-6 text-sm font-semibold transition-opacity duration-500"
+        style={{ opacity: ready ? 1 : 0 }}
+      >
+        {t("prep.ready")}
+      </p>
+
+      <p className="arabic mt-8 font-arabic text-3xl text-white">
         رَبِّ زِدْنِي عِلْمًا
       </p>
       <p className="mt-2 text-sm text-white/45">{t("prep.duaTr")}</p>
@@ -450,26 +583,33 @@ function Bloom() {
 function Question({
   title,
   sub,
+  hint,
   cta,
   onNext,
+  onSkip,
   footer,
   extra,
   children,
 }: {
   title: string;
   sub: string;
+  hint?: string;
   cta: string;
   onNext: () => void;
+  onSkip?: () => void;
   footer?: string;
   extra?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { t } = useApp();
+
   return (
     <div className="w-full max-w-4xl text-center">
       <h1 className="text-3xl font-semibold tracking-tightest text-white sm:text-4xl lg:text-[46px]">
         {title}
       </h1>
       <p className="mt-3 text-sm text-white/55">{sub}</p>
+      {hint && <p className="mt-1 text-[11px] text-white/30">{hint}</p>}
 
       <div className="anim-stagger mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {children}
@@ -485,6 +625,16 @@ function Question({
         >
           {cta}
         </button>
+
+        {onSkip && (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="text-xs text-white/35 underline-offset-4 transition hover:text-white/70 hover:underline"
+          >
+            {t("q.skip")}
+          </button>
+        )}
       </div>
 
       {footer && (
@@ -496,12 +646,43 @@ function Question({
   );
 }
 
+/** Ochilib-yopiladigan ixtiyoriy bo'lim */
+function Expandable({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mx-auto mt-6 w-full max-w-xl">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="mx-auto flex items-center gap-2 text-xs text-white/45 transition hover:text-white"
+      >
+        <Icon
+          name="chevronDown"
+          size={13}
+          className={open ? "rotate-180 transition-transform" : "transition-transform"}
+        />
+        {label}
+      </button>
+
+      {open && <div className="anim-fade-up mt-4 text-left">{children}</div>}
+    </div>
+  );
+}
+
 /**
- * Erkin matn — «nima eshitmoqchisiz».
+ * «Qalbingizda nima bor?» — ixtiyoriy erkin matn.
  * Sun'iy intellekt emas: yozilgan so'zlar mavzu lug'ati bilan solishtiriladi
- * va nima topilgani ochiq ko'rsatiladi.
+ * va nima topilgani ochiq ko'rsatiladi. Holat sharhlanmaydi.
  */
-function AskFreely({
+function HeartNote({
   lead,
   onPick,
   onClear,
@@ -510,26 +691,27 @@ function AskFreely({
   onPick: (p: Passage, mood: MoodId) => void;
   onClear: () => void;
 }) {
-  const { t, ln } = useApp();
-  const [text, setText] = useState("");
+  const { t, ln, prefs, setPrefs } = useApp();
+  const text = prefs.heartNote;
 
   const result = useMemo(() => matchIntent(text), [text]);
   const typed = text.trim().length >= 3;
 
   return (
-    <div className="mx-auto mt-8 w-full max-w-xl text-left">
-      <label className="block text-center text-[11px] uppercase tracking-[0.2em] text-white/35">
-        {t("ask.label")}
-      </label>
+    <div>
+      <p className="text-center text-xs leading-relaxed text-white/45">
+        {t("heart.sub")}
+      </p>
 
-      <input
+      <textarea
+        rows={3}
         value={text}
         onChange={(e) => {
-          setText(e.target.value);
+          setPrefs({ heartNote: e.target.value });
           if (lead) onClear();
         }}
-        placeholder={t("ask.placeholder")}
-        className="mt-3 h-12 w-full rounded-full border border-white/10 bg-white/[0.04] px-5 text-center text-sm text-white outline-none transition placeholder:text-white/25 focus:border-white/30 focus:bg-white/[0.07]"
+        placeholder={t("heart.placeholder")}
+        className="sk-scroll mt-3 w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-relaxed text-white outline-none transition placeholder:text-white/25 focus:border-white/30"
       />
 
       {typed && result.passages.length === 0 && (
@@ -589,12 +771,12 @@ function AskFreely({
               );
             })}
           </ul>
-
-          <p className="mt-3 text-center text-[11px] leading-relaxed text-white/30">
-            {t("ask.note")}
-          </p>
         </div>
       )}
+
+      <p className="mt-4 text-center text-[11px] leading-relaxed text-white/30">
+        {t("heart.privacy")}
+      </p>
     </div>
   );
 }
@@ -604,25 +786,35 @@ function Card({
   sub,
   arabic,
   selected,
+  disabled,
+  wide,
   onClick,
 }: {
   title: string;
   sub?: string;
   arabic: string;
   selected: boolean;
+  disabled?: boolean;
+  wide?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       aria-pressed={selected}
+      aria-disabled={disabled}
       className={[
         "relative flex min-h-[92px] flex-col justify-center rounded-2xl border px-5 py-4 text-left transition duration-200",
-        "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
+        wide ? "w-full" : "",
+        disabled
+          ? "cursor-not-allowed border-white/[0.06] bg-white/[0.02] opacity-45"
+          : "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
         selected
           ? "tone-border tone-bg-soft"
-          : "border-white/[0.09] bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]",
+          : disabled
+            ? ""
+            : "border-white/[0.09] bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]",
       ].join(" ")}
     >
       <span className="flex items-start justify-between gap-3">

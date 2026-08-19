@@ -1,4 +1,5 @@
 import type { Locale } from "./i18n";
+import { DURATIONS, RECITERS } from "./sakinah";
 import type {
   BackgroundId,
   Duration,
@@ -12,10 +13,17 @@ export type RepeatMode = "off" | "ayah" | "segment";
 
 export interface Prefs {
   locale: Locale;
-  intention: IntentionId;
+  /** Bir nechta niyat tanlash mumkin */
+  intentions: IntentionId[];
+  /** «Boshqa narsa» — foydalanuvchi o'z so'zi bilan */
+  intentionNote: string;
+  /** «Qalbingizda nima bor?» — ixtiyoriy, hech qayerga yuborilmaydi */
+  heartNote: string;
   duration: Duration;
   format: FormatId;
   reciter: string;
+  /** Qorini sessiya holatiga qarab tizim tanlaydi */
+  reciterAuto: boolean;
   /** quran.com tarjima resursi — til bilan birga tekshiriladi */
   translation: number | null;
   background: BackgroundId;
@@ -49,10 +57,13 @@ export interface Prefs {
 
 export const DEFAULT_PREFS: Prefs = {
   locale: "uz",
-  intention: "comfort",
+  intentions: [],
+  intentionNote: "",
+  heartNote: "",
   duration: 10,
-  format: "both",
-  reciter: "sudais",
+  format: "read",
+  reciter: "alafasy",
+  reciterAuto: false,
   translation: null,
   background: "sakinah",
   script: "uthmani",
@@ -82,7 +93,10 @@ export const RATES = [0.75, 1, 1.25, 1.5, 2];
 export const WORD_SIZES = [11, 13, 15, 18];
 
 export interface VibeSession {
+  /** Asosiy holat — fon va sarlavha shundan olinadi */
   mood: MoodId;
+  /** Tanlangan barcha holatlar */
+  moods?: MoodId[];
   startedAt: number;
   minutes: Duration;
   /** Navbat tugadi — «davom ettirasizmi?» so'ralgan */
@@ -141,8 +155,28 @@ function readJson<T>(key: string): T | null {
 }
 
 export function loadPrefs(): Prefs {
-  const stored = readJson<Partial<Prefs>>(PREFS_KEY);
-  return stored ? { ...DEFAULT_PREFS, ...stored } : DEFAULT_PREFS;
+  const stored = readJson<Partial<Prefs> & { intention?: IntentionId }>(
+    PREFS_KEY
+  );
+  if (!stored) return DEFAULT_PREFS;
+
+  const p: Prefs = { ...DEFAULT_PREFS, ...stored };
+
+  // Avval bitta niyat saqlanardi
+  if (!Array.isArray(p.intentions))
+    p.intentions = stored.intention ? [stored.intention] : [];
+
+  // «both» rejimi «read» deb nomlandi
+  if ((p.format as string) === "both") p.format = "read";
+
+  // Endi yo'q qorilar
+  if (!RECITERS.some((r) => r.id === p.reciter)) p.reciter = DEFAULT_PREFS.reciter;
+
+  // Endi yo'q davomiylik
+  if (!(DURATIONS as readonly number[]).includes(p.duration))
+    p.duration = DEFAULT_PREFS.duration;
+
+  return p;
 }
 
 export function savePrefs(p: Prefs): void {

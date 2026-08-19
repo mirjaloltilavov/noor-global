@@ -22,9 +22,11 @@ import {
 } from "@/lib/queue";
 import {
   MOOD_BACKGROUND,
+  MOOD_RECITER,
   SURAHS,
   getMood,
   getReciter,
+  intentionThemes,
   type MoodId,
   type Passage,
 } from "@/lib/sakinah";
@@ -97,7 +99,7 @@ interface PlayerValue {
   /** Kuratsiya qilingan parchani joriy navbatga qo'shib, unga o'tadi */
   appendPassage: (p: Passage) => void;
 
-  startVibe: (mood: MoodId, lead?: Passage | null) => void;
+  startVibe: (moods: MoodId | MoodId[], lead?: Passage | null) => void;
   startSurah: (surah: number, verses: number, startAyah?: number) => void;
   continueSession: () => void;
   endSession: () => void;
@@ -318,20 +320,43 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   /* ——— Boshlash ——— */
   const startVibe = useCallback(
-    (mood: MoodId, lead?: Passage | null) => {
-      const segs = planSegments(getMood(mood), prefs.duration, lead);
+    (moods: MoodId | MoodId[], lead?: Passage | null) => {
+      const ids = (Array.isArray(moods) ? moods : [moods]).filter(Boolean);
+      const list = ids.length > 0 ? ids : (["unsure"] as MoodId[]);
+      const primary = list[0];
+
+      const segs = planSegments(list.map(getMood), prefs.duration, {
+        lead,
+        themes: intentionThemes(prefs.intentions),
+      });
       writeQueue("sakinah", segs, 0);
       setModeState("sakinah");
       setAudioMode("sakinah");
       // Atmosfera kayfiyatga moslanadi (foydalanuvchi o'zi tanlamagan bo'lsa)
-      if (prefs.bgAuto) setPrefs({ background: MOOD_BACKGROUND[mood] });
-      setVibe({ mood, startedAt: Date.now(), minutes: prefs.duration, done: false });
+      if (prefs.bgAuto) setPrefs({ background: MOOD_BACKGROUND[primary] });
+      // Qori ham — «o'zi tanlasin» belgilangan bo'lsa
+      if (prefs.reciterAuto) setPrefs({ reciter: MOOD_RECITER[primary] });
+      setVibe({
+        mood: primary,
+        moods: list,
+        startedAt: Date.now(),
+        minutes: prefs.duration,
+        done: false,
+      });
       setFinished(false);
       setReflecting(false);
       setMinimized(false);
       setPlaying(true);
     },
-    [prefs.duration, prefs.bgAuto, setPrefs, setVibe, writeQueue]
+    [
+      prefs.duration,
+      prefs.bgAuto,
+      prefs.reciterAuto,
+      prefs.intentions,
+      setPrefs,
+      setVibe,
+      writeQueue,
+    ]
   );
 
   const startSurah = useCallback(
@@ -403,7 +428,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     if (audioMode === "sakinah" && vibe && !vibe.done) {
       if (vibe.minutes === 0) {
-        writeQueue("sakinah", extendPlan(getMood(vibe.mood), aSegments), nextPos);
+        writeQueue("sakinah", extendPlan((vibe.moods ?? [vibe.mood]).map(getMood), aSegments), nextPos);
         return;
       }
       finishSession();
@@ -529,7 +554,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const continueSession = useCallback(() => {
     if (!vibe) return;
-    writeQueue("sakinah", extendPlan(getMood(vibe.mood), aSegments, 20), aCursor.pos + 1);
+    writeQueue("sakinah", extendPlan((vibe.moods ?? [vibe.mood]).map(getMood), aSegments, 20), aCursor.pos + 1);
     setAudioMode("sakinah");
     setVibe({ ...vibe, done: false });
     setFinished(false);

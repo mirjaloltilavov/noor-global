@@ -1,9 +1,11 @@
 import {
+  STAGES,
   SURAHS,
   type L10n,
   type Mood,
   type Passage,
   type Stage,
+  type ThemeId,
 } from "./sakinah";
 
 /** Bir oyatning o'rtacha tilovat vaqti (daqiqa) — navbat rejasini tuzish uchun */
@@ -55,15 +57,6 @@ function chunkSurah(surah: number): Segment[] {
   return out;
 }
 
-/**
- * Kayfiyat va tanlangan davomiylik bo'yicha navbat tuzadi.
- *
- * Tartib: avval kuratsiya qilingan parchalar, so'ng o'sha suralarning
- * to'liq matni (bo'laklarga bo'linib). Vaqt yetmasa aylanma davom etadi.
- *
- * `minutes === 0` (cheksiz) bo'lsa boshlang'ich zaxira tuziladi va
- * navbat tugashiga yaqinlashganda `extendPlan` bilan uzaytiriladi.
- */
 export function toSegment(p: Passage): Segment {
   return {
     surah: p.surah,
@@ -76,28 +69,80 @@ export function toSegment(p: Passage): Segment {
   };
 }
 
+export interface PlanOptions {
+  /** Sayohat shu parchadan boshlanadi (erkin matn orqali tanlangan) */
+  lead?: Passage | null;
+  /** Tanlangan niyatlarning mavzulari — parchalar shunga qarab saralanadi */
+  themes?: ThemeId[];
+}
+
 /**
- * @param lead — sayohat shu parchadan boshlanadi (erkin matn orqali tanlangan)
+ * Tanlangan holat(lar) va davomiylik bo'yicha navbat tuzadi.
+ *
+ * Bir nechta holat tanlansa parchalar navbatma-navbat olinadi, ya'ni
+ * har bir holat sayohatda ko'rinadi. Tartib bosqichlar bo'yicha:
+ * kelish → o'ylash → chuqurlashish → yakunlash. Niyat mavzulariga mos
+ * parchalar o'z bosqichi ichida oldinroq turadi.
+ *
+ * Vaqt yetmasa o'sha suralarning to'liq matni bilan to'ldiriladi.
+ * `minutes === 0` (cheksiz) bo'lsa boshlang'ich zaxira tuziladi va
+ * navbat tugashiga yaqinlashganda `extendPlan` bilan uzaytiriladi.
  */
 export function planSegments(
-  mood: Mood,
+  moods: Mood | Mood[],
   minutes: number,
-  lead?: Passage | null
+  opts: PlanOptions | Passage | null = null
 ): Segment[] {
+  const list = Array.isArray(moods) ? moods : [moods];
+  const options: PlanOptions =
+    opts && "surah" in opts ? { lead: opts } : (opts ?? {});
+  const lead = options.lead ?? null;
+  const themes = options.themes ?? [];
   const target = minutes === 0 ? 45 : minutes;
 
-  const curated: Segment[] = mood.passages
-    .filter((p) => !lead || p.surah !== lead.surah || p.from !== lead.from)
-    .map(toSegment);
-  if (lead) curated.unshift(toSegment(lead));
+  const key = (p: Passage) => `${p.surah}:${p.from}-${p.to}`;
+  const leadKey = lead ? key(lead) : "";
 
-  const segments = [...curated];
+  // Niyat mavzulariga mos kelish darajasi
+  const score = (p: Passage) =>
+    themes.length === 0
+      ? 0
+      : p.themes.filter((t) => themes.includes(t)).length;
+
+  // Har bosqichda holatlar navbatma-navbat
+  const ordered: Passage[] = [];
+  const used = new Set<string>(leadKey ? [leadKey] : []);
+
+  for (const stage of STAGES) {
+    const perMood = list.map((m) =>
+      m.passages
+        .filter((p) => p.stage === stage && !used.has(key(p)))
+        .sort((x, y) => score(y) - score(x))
+    );
+
+    let depth = 0;
+    let added = true;
+    while (added) {
+      added = false;
+      for (const bucket of perMood) {
+        const p = bucket[depth];
+        if (!p || used.has(key(p))) continue;
+        used.add(key(p));
+        ordered.push(p);
+        added = true;
+      }
+      depth++;
+    }
+  }
+
+  const segments: Segment[] = ordered.map(toSegment);
+  if (lead) segments.unshift(toSegment(lead));
   if (totalMinutes(segments) >= target) return trim(segments, target);
 
   // Kuratsiya qilingan parchalar qaysi surada bo'lsa — o'sha suralar to'liq
   const pool: Segment[] = [];
   const seen = new Set<number>();
-  for (const p of mood.passages) {
+  for (const p of [...(lead ? [lead] : []), ...ordered]) {
     if (seen.has(p.surah)) continue;
     seen.add(p.surah);
     pool.push(...chunkSurah(p.surah));
@@ -129,11 +174,11 @@ function trim(segments: Segment[], target: number): Segment[] {
 
 /** Cheksiz rejim uchun navbatni yana `minutes` daqiqaga uzaytiradi */
 export function extendPlan(
-  mood: Mood,
+  moods: Mood | Mood[],
   existing: Segment[],
   minutes = 30
 ): Segment[] {
-  const grown = planSegments(mood, totalMinutes(existing) + minutes);
+  const grown = planSegments(moods, totalMinutes(existing) + minutes);
   return grown.length > existing.length ? grown : existing;
 }
 

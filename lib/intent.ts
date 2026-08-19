@@ -83,6 +83,31 @@ const THEME_STEMS: Record<ThemeId, string[]> = {
     "поминан", "вспомн", "молитв", "дуа", "намаз", "близ", "отдал",
     "remembr", "remember", "dhikr", "prayer", "supplicat", "closer", "distant",
   ],
+  strength: [
+    "kuch", "matonat", "jasor", "harakat", "intil", "g'ayrat", "gayrat",
+    "сил", "мужеств", "стремл", "усерд",
+    "strength", "strong", "courage", "strive", "effort", "motivat",
+  ],
+  closeness: [
+    "yaqin", "qurb", "birga", "tashlab", "unut",
+    "близ", "рядом", "вместе", "покину", "забыт",
+    "closeness", "close", "near", "with me", "abandon", "forgotten",
+  ],
+  hereafter: [
+    "oxirat", "qiyomat", "abadiy", "hisob", "o'lim", "olimdan",
+    "ахир", "судн", "вечн", "смерт",
+    "hereafter", "afterlife", "judgment", "eternal", "death",
+  ],
+  faith: [
+    "iymon", "imon", "e'tiqod", "etiqod", "mustahkam", "susay",
+    "вер", "убежден", "укреп", "слабе",
+    "faith", "belief", "iman", "stronger faith", "weak faith",
+  ],
+  reflection: [
+    "tafakkur", "o'ylan", "oylan", "fikr", "ma'no izla", "tushun",
+    "размышл", "подум", "смысл", "понима",
+    "reflect", "ponder", "think", "contemplat", "understand",
+  ],
 };
 
 /** Ba'zi so'zlar to'g'ridan-to'g'ri kayfiyatni ko'rsatadi */
@@ -105,6 +130,29 @@ const MOOD_STEMS: Record<MoodId, string[]> = {
   fear: [
     "qo'rq", "qorq", "hayajon", "dahshat", "страх", "боюс", "ужас",
     "fear", "afraid", "scared", "terrif",
+  ],
+  hopeful: ["umid", "надежд", "hope", "hopeful"],
+  peaceful: ["tinch", "xotirjam", "покой", "спокой", "peace", "calm"],
+  lonely: [
+    "yolg'iz", "yolgiz", "tashlab", "одинок", "покину",
+    "lonely", "alone", "abandon",
+  ],
+  overwhelmed: [
+    "charcha", "ezil", "siqil", "ko'p ish", "kop ish", "og'ir",
+    "устал", "навалил", "выгор", "тяжел",
+    "overwhelm", "burnout", "exhaust", "too much", "tired",
+  ],
+  motivated: [
+    "ruhlan", "g'ayrat", "gayrat", "intil", "harakat",
+    "силы", "мотив", "стремл",
+    "motivat", "energ", "driven", "strive",
+  ],
+  reflective: [
+    "tafakkur", "o'ylan", "oylan", "размышл", "подум",
+    "reflect", "ponder", "contemplat",
+  ],
+  unsure: [
+    "bilmayman", "не знаю", "don't know", "dont know", "just a reminder",
   ],
 };
 
