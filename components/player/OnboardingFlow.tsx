@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Stage } from "@/components/sakinah/Stage";
 import { Icon } from "@/components/ui/Icon";
@@ -18,8 +18,12 @@ import {
   STAGE_SUB,
   getMood,
   type Duration,
+  THEME_LABEL,
+  passageRef,
   type MoodId,
+  type Passage,
 } from "@/lib/sakinah";
+import { matchIntent } from "@/lib/intent";
 
 /** Savollar: qalb → niyat → qanday → vaqt → ovoz */
 const STEPS = 5;
@@ -35,7 +39,7 @@ export function OnboardingFlow({
   onClose,
 }: {
   initialMood: MoodId | null;
-  onBegin: (mood: MoodId) => void;
+  onBegin: (mood: MoodId, lead?: Passage | null) => void;
   onClose: () => void;
 }) {
   const { t, ln, prefs, setPrefs } = useApp();
@@ -43,6 +47,8 @@ export function OnboardingFlow({
   const [phase, setPhase] = useState<Phase>("bloom");
   const [step, setStep] = useState(0);
   const [mood, setMood] = useState<MoodId>(initialMood ?? "anxious");
+  // Erkin matn orqali tanlangan parcha — sayohat shundan boshlanadi
+  const [lead, setLead] = useState<Passage | null>(null);
 
   useEffect(() => {
     if (phase !== "bloom") return;
@@ -134,7 +140,7 @@ export function OnboardingFlow({
           )}
 
           {phase === "why" && (
-            <WhyThis mood={mood} onBegin={() => onBegin(mood)} />
+            <WhyThis mood={mood} onBegin={() => onBegin(mood, lead)} />
           )}
 
           {phase === "questions" && (
@@ -149,6 +155,16 @@ export function OnboardingFlow({
                   cta={t("q.continue")}
                   onNext={forward}
                   footer={t("q.mood.footer")}
+                  extra={
+                    <AskFreely
+                      lead={lead}
+                      onPick={(p, m) => {
+                        setLead(p);
+                        setMood(m);
+                      }}
+                      onClear={() => setLead(null)}
+                    />
+                  }
                 >
                   {MOODS.map((m) => (
                     <Card
@@ -156,7 +172,10 @@ export function OnboardingFlow({
                       title={ln(m.label)}
                       arabic={m.arabic}
                       selected={mood === m.id}
-                      onClick={() => setMood(m.id)}
+                      onClick={() => {
+                        setMood(m.id);
+                        setLead(null);
+                      }}
                     />
                   ))}
                 </Question>
@@ -434,6 +453,7 @@ function Question({
   cta,
   onNext,
   footer,
+  extra,
   children,
 }: {
   title: string;
@@ -441,6 +461,7 @@ function Question({
   cta: string;
   onNext: () => void;
   footer?: string;
+  extra?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -453,6 +474,8 @@ function Question({
       <div className="anim-stagger mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {children}
       </div>
+
+      {extra}
 
       <div className="mt-10 flex flex-col items-center gap-3">
         <button
@@ -468,6 +491,109 @@ function Question({
         <p className="mt-10 text-[11px] leading-relaxed text-white/30">
           {footer}
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Erkin matn — «nima eshitmoqchisiz».
+ * Sun'iy intellekt emas: yozilgan so'zlar mavzu lug'ati bilan solishtiriladi
+ * va nima topilgani ochiq ko'rsatiladi.
+ */
+function AskFreely({
+  lead,
+  onPick,
+  onClear,
+}: {
+  lead: Passage | null;
+  onPick: (p: Passage, mood: MoodId) => void;
+  onClear: () => void;
+}) {
+  const { t, ln } = useApp();
+  const [text, setText] = useState("");
+
+  const result = useMemo(() => matchIntent(text), [text]);
+  const typed = text.trim().length >= 3;
+
+  return (
+    <div className="mx-auto mt-8 w-full max-w-xl text-left">
+      <label className="block text-center text-[11px] uppercase tracking-[0.2em] text-white/35">
+        {t("ask.label")}
+      </label>
+
+      <input
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (lead) onClear();
+        }}
+        placeholder={t("ask.placeholder")}
+        className="mt-3 h-12 w-full rounded-full border border-white/10 bg-white/[0.04] px-5 text-center text-sm text-white outline-none transition placeholder:text-white/25 focus:border-white/30 focus:bg-white/[0.07]"
+      />
+
+      {typed && result.passages.length === 0 && (
+        <p className="mt-3 text-center text-xs text-white/40">{t("ask.none")}</p>
+      )}
+
+      {result.passages.length > 0 && (
+        <div className="anim-fade-up mt-4">
+          <p className="text-center text-[11px] text-white/40">
+            {t("ask.found")}:{" "}
+            <span className="tone-text">
+              {result.themes.map((x) => ln(THEME_LABEL[x])).join(" · ")}
+            </span>
+          </p>
+
+          <ul className="mt-3 space-y-2">
+            {result.passages.slice(0, 3).map(({ passage, mood: m, shared }) => {
+              const active =
+                lead?.surah === passage.surah && lead?.from === passage.from;
+              return (
+                <li key={`${passage.surah}-${passage.from}`}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(passage, m)}
+                    className={[
+                      "w-full rounded-xl border px-4 py-3 text-left transition active:scale-[0.99]",
+                      active
+                        ? "tone-border tone-bg-soft"
+                        : "border-white/[0.07] bg-white/[0.03] hover:border-white/25",
+                    ].join(" ")}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-white">
+                        {passageRef(passage)}
+                      </span>
+                      <span className="ml-auto flex gap-1">
+                        {shared.map((x) => (
+                          <span
+                            key={x}
+                            className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/60"
+                          >
+                            {ln(THEME_LABEL[x])}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs leading-relaxed text-white/55">
+                      {ln(passage.note)}
+                    </p>
+                    {active && (
+                      <span className="tone-text mt-2 block text-[11px]">
+                        {t("ask.starts")}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="mt-3 text-center text-[11px] leading-relaxed text-white/30">
+            {t("ask.note")}
+          </p>
+        </div>
       )}
     </div>
   );

@@ -40,10 +40,10 @@ export default function SakinahPage() {
       {onboarding && (
         <OnboardingFlow
           initialMood={vibe?.mood ?? null}
-          onBegin={(mood) => {
+          onBegin={(mood, lead) => {
             setPrefs({ onboarded: true });
             setOnboarding(false);
-            player.startVibe(mood);
+            player.startVibe(mood, lead);
           }}
           onClose={() => setOnboarding(false)}
         />

@@ -97,7 +97,7 @@ interface PlayerValue {
   /** Kuratsiya qilingan parchani joriy navbatga qo'shib, unga o'tadi */
   appendPassage: (p: Passage) => void;
 
-  startVibe: (mood: MoodId) => void;
+  startVibe: (mood: MoodId, lead?: Passage | null) => void;
   startSurah: (surah: number, verses: number) => void;
   continueSession: () => void;
   endSession: () => void;
@@ -318,8 +318,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   /* ——— Boshlash ——— */
   const startVibe = useCallback(
-    (mood: MoodId) => {
-      const segs = planSegments(getMood(mood), prefs.duration);
+    (mood: MoodId, lead?: Passage | null) => {
+      const segs = planSegments(getMood(mood), prefs.duration, lead);
       writeQueue("sakinah", segs, 0);
       setModeState("sakinah");
       setAudioMode("sakinah");

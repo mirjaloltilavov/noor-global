@@ -1,4 +1,10 @@
-import { SURAHS, type L10n, type Mood, type Stage } from "./sakinah";
+import {
+  SURAHS,
+  type L10n,
+  type Mood,
+  type Passage,
+  type Stage,
+} from "./sakinah";
 
 /** Bir oyatning o'rtacha tilovat vaqti (daqiqa) — navbat rejasini tuzish uchun */
 const MINUTES_PER_AYAH = 0.4;
@@ -58,10 +64,8 @@ function chunkSurah(surah: number): Segment[] {
  * `minutes === 0` (cheksiz) bo'lsa boshlang'ich zaxira tuziladi va
  * navbat tugashiga yaqinlashganda `extendPlan` bilan uzaytiriladi.
  */
-export function planSegments(mood: Mood, minutes: number): Segment[] {
-  const target = minutes === 0 ? 45 : minutes;
-
-  const curated: Segment[] = mood.passages.map((p) => ({
+export function toSegment(p: Passage): Segment {
+  return {
     surah: p.surah,
     from: p.from,
     to: p.to,
@@ -69,7 +73,23 @@ export function planSegments(mood: Mood, minutes: number): Segment[] {
     kind: "vibe",
     stage: p.stage,
     note: p.note,
-  }));
+  };
+}
+
+/**
+ * @param lead — sayohat shu parchadan boshlanadi (erkin matn orqali tanlangan)
+ */
+export function planSegments(
+  mood: Mood,
+  minutes: number,
+  lead?: Passage | null
+): Segment[] {
+  const target = minutes === 0 ? 45 : minutes;
+
+  const curated: Segment[] = mood.passages
+    .filter((p) => !lead || p.surah !== lead.surah || p.from !== lead.from)
+    .map(toSegment);
+  if (lead) curated.unshift(toSegment(lead));
 
   const segments = [...curated];
   if (totalMinutes(segments) >= target) return trim(segments, target);
