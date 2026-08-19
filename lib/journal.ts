@@ -65,9 +65,27 @@ export function useJournalRows(query = ""): JournalRow[] {
 }
 
 /** To'liq sana — Daftardagi eski yozuvlar uchun */
+const UZ_MONTHS = [
+  "yanvar",
+  "fevral",
+  "mart",
+  "aprel",
+  "may",
+  "iyun",
+  "iyul",
+  "avgust",
+  "sentabr",
+  "oktabr",
+  "noyabr",
+  "dekabr",
+];
+
 export function fullDate(at: number, locale: Locale): string {
-  const tag = locale === "uz" ? "uz-UZ" : locale === "ru" ? "ru-RU" : "en-GB";
-  return new Date(at).toLocaleDateString(tag, {
+  const d = new Date(at);
+  if (locale === "uz") {
+    return `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}, ${d.getFullYear()}`;
+  }
+  return d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
