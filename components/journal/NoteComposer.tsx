@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { usePlayer } from "@/components/player/PlayerProvider";
 import { useApp } from "@/components/providers/AppProvider";
+import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { ayahCite } from "@/lib/cite";
+import { appendToDoc, docTitle } from "@/lib/docs";
 import { SURAHS } from "@/lib/sakinah";
 
 /**
@@ -23,7 +27,9 @@ export function NoteComposer({
   onClose: () => void;
 }) {
   const { t, addJournal, updateJournal, vibe } = useApp();
+  const player = usePlayer();
   const [text, setText] = useState(initial);
+  const [added, setAdded] = useState<string | null>(null);
 
   const name = SURAHS[surah]?.slug ?? `Surah ${surah}`;
 
@@ -33,6 +39,18 @@ export function NoteComposer({
     if (journalId) updateJournal(journalId, note);
     else addJournal({ surah, ayah, note, mood: vibe?.mood });
     onClose();
+  };
+
+  /** Oyatni (va yozilgan izohni) hujjat oxiriga qo'shadi */
+  const toDocument = () => {
+    const a = player.ayah;
+    const cite = a
+      ? ayahCite(a, name)
+      : `> — ${name}, ${surah}:${ayah}`;
+    const note = text.trim();
+    const doc = appendToDoc(note ? `${cite}\n\n${note}` : cite);
+    setAdded(docTitle(doc, t("doc.untitled")));
+    window.setTimeout(() => setAdded(null), 3000);
   };
 
   return (
@@ -69,7 +87,22 @@ export function NoteComposer({
         placeholder={t("note.placeholder")}
         className="sk-scroll w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-relaxed text-white outline-none transition placeholder:text-white/25 focus:border-white/30"
       />
-      <p className="mt-3 text-[11px] leading-relaxed text-white/30">
+      <button
+        type="button"
+        onClick={toDocument}
+        className="mt-4 flex items-center gap-2 text-xs text-white/50 transition hover:text-white"
+      >
+        <Icon name="notepad" size={13} />
+        {t("doc.addTo")}
+      </button>
+
+      {added && (
+        <p className="tone-text anim-fade-in mt-2 text-[11px]">
+          {t("doc.added", { title: added })}
+        </p>
+      )}
+
+      <p className="mt-4 text-[11px] leading-relaxed text-white/30">
         {t("journal.private")}
       </p>
     </Modal>

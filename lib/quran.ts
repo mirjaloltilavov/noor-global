@@ -158,3 +158,35 @@ export async function fetchChapters(language: string): Promise<Chapter[]> {
     verses: c.verses_count,
   }));
 }
+
+export interface SearchHit {
+  key: string;
+  surah: number;
+  ayah: number;
+  /** Arabcha matn — ro'yxatda ko'rsatish uchun */
+  text: string;
+}
+
+/** Qidiruv — quran.com indeksidan oyat kalitlarini qaytaradi */
+export async function searchVerses(
+  query: string,
+  language: string,
+  size = 12
+): Promise<SearchHit[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const res = await fetch(
+    `${API}/search?q=${encodeURIComponent(q)}&size=${size}&language=${language}`
+  );
+  if (!res.ok) throw new Error(`quran.com search ${res.status}`);
+
+  const json = (await res.json()) as {
+    search?: { results?: { verse_key: string; text?: string }[] };
+  };
+
+  return (json.search?.results ?? []).map((r) => {
+    const [s, a] = r.verse_key.split(":").map(Number);
+    return { key: r.verse_key, surah: s, ayah: a, text: r.text ?? "" };
+  });
+}
