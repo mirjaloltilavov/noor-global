@@ -442,3 +442,115 @@ body {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ——— Atmosferalar ————————————————————————————————————
+   Ovoz yo'q — faqat vizual muhit. Qur'on ortida musiqa bo'lmaydi. */
+
+/* Fajr — tongning sekin yorishuvi */
+.sk-dawn {
+  background: linear-gradient(
+    180deg,
+    #0a0f1e 0%,
+    #1b1626 45%,
+    #43281c 78%,
+    #6b3a22 100%
+  );
+  animation: sk-dawn-rise 34s ease-in-out infinite;
+}
+
+.sk-dawn-glow {
+  background: radial-gradient(
+    62% 42% at 50% 100%,
+    rgba(255, 201, 139, 0.5) 0%,
+    rgba(255, 150, 90, 0.18) 42%,
+    rgba(0, 0, 0, 0) 76%
+  );
+  animation: sk-dawn-glow 34s ease-in-out infinite;
+}
+
+@keyframes sk-dawn-rise {
+  0%,
+  100% {
+    filter: brightness(0.8);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes sk-dawn-glow {
+  0%,
+  100% {
+    transform: translateY(26px) scale(0.96);
+    opacity: calc(var(--sk-brightness) * 0.6);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.06);
+    opacity: var(--sk-brightness);
+  }
+}
+
+/* Matar — yomg'ir, juda yengil */
+.sk-rain {
+  background: linear-gradient(180deg, #0a141b 0%, #10202b 60%, #142833 100%);
+}
+
+.sk-rain-fall {
+  background-image: repeating-linear-gradient(
+    104deg,
+    rgba(158, 198, 232, 0.14) 0px,
+    rgba(158, 198, 232, 0.14) 1px,
+    transparent 1px,
+    transparent 22px
+  );
+  background-size: auto 180px;
+  animation: sk-rain-fall 2.6s linear infinite;
+  opacity: calc(var(--sk-brightness) * 0.55);
+}
+
+@keyframes sk-rain-fall {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 60px 180px;
+  }
+}
+
+/* Sukut — deyarli bo'sh, sekin nafas oladi */
+.sk-quiet {
+  background: radial-gradient(
+    70% 55% at 50% 45%,
+    rgba(185, 196, 214, 0.1) 0%,
+    rgba(10, 14, 22, 0) 70%
+  );
+  animation: sk-quiet-breathe 22s ease-in-out infinite;
+}
+
+@keyframes sk-quiet-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: calc(var(--sk-brightness) * 0.55);
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: var(--sk-brightness);
+  }
+}
+
+.sk-still .sk-dawn,
+.sk-still .sk-dawn-glow,
+.sk-still .sk-rain-fall,
+.sk-still .sk-quiet {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-dawn,
+  .sk-dawn-glow,
+  .sk-rain-fall,
+  .sk-quiet {
+    animation: none !important;
+  }
+}

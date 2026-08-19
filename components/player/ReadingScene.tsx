@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AyahText } from "@/components/player/AyahText";
 import { ClosingScreen } from "@/components/player/ClosingScreen";
 import { JournalModal } from "@/components/player/JournalModal";
+import { MoreLikeThis } from "@/components/player/MoreLikeThis";
 import { ReflectionCard } from "@/components/player/ReflectionCard";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { SettingsRail } from "@/components/player/SettingsRail";
@@ -33,6 +34,7 @@ export function ReadingScene({
 
   const [controls, setControls] = useState(true);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [showTip, setShowTip] = useState(false);
 
   const { segment, track, cursor, segments, segIndex, ayah, loading, error } =
@@ -287,8 +289,15 @@ export function ReadingScene({
             label: t("journal.title"),
             onClick: () => setJournalOpen(true),
           },
+          {
+            icon: "sparkle",
+            label: t("more.title"),
+            onClick: () => setMoreOpen(true),
+          },
         ]}
       />
+
+      {moreOpen && <MoreLikeThis onClose={() => setMoreOpen(false)} />}
 
       {journalOpen && <JournalModal onClose={() => setJournalOpen(false)} />}
 

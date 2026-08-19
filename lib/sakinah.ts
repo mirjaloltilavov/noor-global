@@ -71,6 +71,31 @@ export const STAGE_SUB: Record<Stage, L10n> = {
   },
 };
 
+export type ThemeId =
+  | "comfort"
+  | "patience"
+  | "hope"
+  | "mercy"
+  | "forgiveness"
+  | "gratitude"
+  | "trust"
+  | "guidance"
+  | "provision"
+  | "remembrance";
+
+export const THEME_LABEL: Record<ThemeId, L10n> = {
+  comfort: { uz: "Taskin", ru: "Утешение", en: "Comfort" },
+  patience: { uz: "Sabr", ru: "Терпение", en: "Patience" },
+  hope: { uz: "Umid", ru: "Надежда", en: "Hope" },
+  mercy: { uz: "Rahmat", ru: "Милость", en: "Mercy" },
+  forgiveness: { uz: "Mag'firat", ru: "Прощение", en: "Forgiveness" },
+  gratitude: { uz: "Shukr", ru: "Благодарность", en: "Gratitude" },
+  trust: { uz: "Tavakkul", ru: "Упование", en: "Trust" },
+  guidance: { uz: "Hidoyat", ru: "Руководство", en: "Guidance" },
+  provision: { uz: "Rizq", ru: "Удел", en: "Provision" },
+  remembrance: { uz: "Zikr", ru: "Поминание", en: "Remembrance" },
+};
+
 export interface Passage {
   surah: number;
   from: number;
@@ -78,6 +103,8 @@ export interface Passage {
   minutes: number;
   /** Sayohatdagi o'rni */
   stage: Stage;
+  /** Mavzular — «shunga o'xshash» tavsiyalari uchun */
+  themes: ThemeId[];
   /** Nega aynan shu parcha — olimlar izohiga asoslangan qisqa eslatma */
   note: L10n;
 }
@@ -131,6 +158,7 @@ export const MOODS: Mood[] = [
         to: 28,
         minutes: 2,
         stage: "arrival",
+        themes: ["comfort","trust"],
         note: {
           uz: "Muso alayhissalomning duosi — qiyin ish oldidan ko'ngilni kengaytirishni so'rash.",
           ru: "Мольба Мусы (мир ему) — просьба раскрыть грудь перед трудным делом.",
@@ -143,6 +171,7 @@ export const MOODS: Mood[] = [
         to: 28,
         minutes: 2,
         stage: "reflection",
+        themes: ["comfort","remembrance"],
         note: {
           uz: "Bevosita notinch qalbga qaratilgan — klassik tafsirlar buni xavotirning davosi deb o'qigan.",
           ru: "Обращено прямо к беспокойному сердцу — классические тафсиры читают это как лекарство от тревоги.",
@@ -155,6 +184,7 @@ export const MOODS: Mood[] = [
         to: 8,
         minutes: 3,
         stage: "deepening",
+        themes: ["hope","comfort"],
         note: {
           uz: "Payg'ambarga ﷺ qiyinchilik onida tasalli sifatida nozil bo'lgan.",
           ru: "Ниспослано как утешение Пророку ﷺ в момент трудности.",
@@ -167,6 +197,7 @@ export const MOODS: Mood[] = [
         to: 286,
         minutes: 2,
         stage: "closing",
+        themes: ["mercy","trust"],
         note: {
           uz: "Ko'tarayotgan yukingiz aynan sizga o'lchab berilgani haqidagi eslatma.",
           ru: "Напоминание о том, что ноша, которую вы несёте, отмерена именно для вас.",
@@ -191,6 +222,7 @@ export const MOODS: Mood[] = [
         to: 18,
         minutes: 2,
         stage: "arrival",
+        themes: ["gratitude","mercy"],
         note: {
           uz: "Ne'matlarni sanashning imkoni yo'qligi — shukr shu yerdan boshlanadi.",
           ru: "Милости невозможно сосчитать — с этого начинается благодарность.",
@@ -203,6 +235,7 @@ export const MOODS: Mood[] = [
         to: 7,
         minutes: 2,
         stage: "reflection",
+        themes: ["gratitude","hope"],
         note: {
           uz: "Shukrga berilgan aniq va'da — ko'proq shukr, ko'proq ziyoda.",
           ru: "Прямое обещание за благодарность — больше благодарности, больше прибавления.",
@@ -215,6 +248,7 @@ export const MOODS: Mood[] = [
         to: 11,
         minutes: 3,
         stage: "deepening",
+        themes: ["gratitude","comfort"],
         note: {
           uz: "Sura o'tmishdagi ne'matlarni sanab, shukrni yodga solish bilan tugaydi.",
           ru: "Сура перечисляет прошлые милости и завершается напоминанием о благодарности.",
@@ -227,6 +261,7 @@ export const MOODS: Mood[] = [
         to: 152,
         minutes: 2,
         stage: "closing",
+        themes: ["remembrance","gratitude"],
         note: {
           uz: "Zikr o'zaro: Meni yodga oling — Men sizni yodga olaman.",
           ru: "Поминание взаимно: помните Меня — Я помяну вас.",
@@ -251,6 +286,7 @@ export const MOODS: Mood[] = [
         to: 3,
         minutes: 1,
         stage: "arrival",
+        themes: ["comfort","hope"],
         note: {
           uz: "Vahiy to'xtagan og'ir kunlarda nozil bo'lgan: «Robbing seni tark etgani yo'q».",
           ru: "Ниспослано в тяжёлые дни: «Не покинул тебя твой Господь».",
@@ -263,6 +299,7 @@ export const MOODS: Mood[] = [
         to: 157,
         minutes: 3,
         stage: "reflection",
+        themes: ["patience","hope"],
         note: {
           uz: "Sinov ta'rifi va sabr qilganlarga berilgan xushxabar bir joyda.",
           ru: "Описание испытания и радостная весть терпеливым — в одном месте.",
@@ -275,6 +312,7 @@ export const MOODS: Mood[] = [
         to: 40,
         minutes: 2,
         stage: "deepening",
+        themes: ["comfort","trust"],
         note: {
           uz: "G'or ichida aytilgan so'z: «G'am yema, Alloh biz bilan».",
           ru: "Слова, сказанные в пещере: «Не печалься, Аллах с нами».",
@@ -287,6 +325,7 @@ export const MOODS: Mood[] = [
         to: 86,
         minutes: 2,
         stage: "closing",
+        themes: ["patience","comfort"],
         note: {
           uz: "Ya'qub alayhissalom g'amini faqat Allohga shikoyat qiladi.",
           ru: "Йакуб (мир ему) жалуется на свою скорбь только Аллаху.",
@@ -311,6 +350,7 @@ export const MOODS: Mood[] = [
         to: 110,
         minutes: 2,
         stage: "arrival",
+        themes: ["forgiveness","mercy"],
         note: {
           uz: "Eshik ochiq ekanini eslatadi — kechirim so'ragan kishi Allohni G'afur topadi.",
           ru: "Напоминает, что дверь открыта — просящий прощения найдёт Аллаха Прощающим.",
@@ -323,6 +363,7 @@ export const MOODS: Mood[] = [
         to: 53,
         minutes: 2,
         stage: "reflection",
+        themes: ["forgiveness","hope"],
         note: {
           uz: "Ko'p mufassirlar buni Qur'ondagi eng keng umid oyati deb ataydi.",
           ru: "Многие комментаторы называют это самым широким аятом надежды в Коране.",
@@ -335,6 +376,7 @@ export const MOODS: Mood[] = [
         to: 135,
         minutes: 2,
         stage: "deepening",
+        themes: ["forgiveness","mercy"],
         note: {
           uz: "Xato qilgach darhol Allohni eslash — taqvodorlarning belgisi.",
           ru: "Вспомнить Аллаха сразу после ошибки — признак богобоязненных.",
@@ -347,6 +389,7 @@ export const MOODS: Mood[] = [
         to: 8,
         minutes: 3,
         stage: "closing",
+        themes: ["forgiveness","hope"],
         note: {
           uz: "Chin tavba — «tavbatan nasuha» — nima ekanini bayon qiladi.",
           ru: "Определяет, что такое искреннее покаяние — «тауба насуха».",
@@ -371,6 +414,7 @@ export const MOODS: Mood[] = [
         to: 257,
         minutes: 2,
         stage: "arrival",
+        themes: ["guidance","hope"],
         note: {
           uz: "Alloh imon keltirganlarni zulmatdan nurga chiqaradi — yo'l izlashning boshlanishi.",
           ru: "Аллах выводит верующих из мрака к свету — начало поиска пути.",
@@ -383,6 +427,7 @@ export const MOODS: Mood[] = [
         to: 10,
         minutes: 2,
         stage: "reflection",
+        themes: ["guidance","mercy"],
         note: {
           uz: "G'or yigitlarining duosi — rahmat va to'g'ri yo'l so'rash.",
           ru: "Мольба юношей пещеры — просьба о милости и верном пути.",
@@ -395,6 +440,7 @@ export const MOODS: Mood[] = [
         to: 186,
         minutes: 2,
         stage: "deepening",
+        themes: ["guidance","remembrance"],
         note: {
           uz: "Hukmlar orasida to'satdan keladigan yaqinlik oyati.",
           ru: "Аят близости, внезапно возникающий посреди предписаний.",
@@ -407,6 +453,7 @@ export const MOODS: Mood[] = [
         to: 7,
         minutes: 3,
         stage: "closing",
+        themes: ["guidance","mercy"],
         note: {
           uz: "Kuniga o'n marta takrorlanadigan hidoyat so'rovi.",
           ru: "Просьба о руководстве, повторяемая десятки раз в день.",
@@ -435,6 +482,7 @@ export const MOODS: Mood[] = [
         to: 160,
         minutes: 2,
         stage: "arrival",
+        themes: ["trust","hope"],
         note: {
           uz: "Yordam Allohdan ekanini eslatib, qo'rquvni o'z o'lchoviga qaytaradi.",
           ru: "Напоминает, что помощь — от Аллаха, и возвращает страху его меру.",
@@ -447,6 +495,7 @@ export const MOODS: Mood[] = [
         to: 3,
         minutes: 3,
         stage: "reflection",
+        themes: ["trust","provision"],
         note: {
           uz: "Chiqish yo'li va kutilmagan tomondan riziq va'dasi.",
           ru: "Обещание выхода и удела оттуда, откуда не ждёшь.",
@@ -459,6 +508,7 @@ export const MOODS: Mood[] = [
         to: 173,
         minutes: 2,
         stage: "deepening",
+        themes: ["trust","patience"],
         note: {
           uz: "Qo'rquv onida aytilgan so'z: «Hasbunallohu va ni'mal vakiyl».",
           ru: "Слова, сказанные в момент страха: «Достаточно нам Аллаха».",
@@ -471,6 +521,7 @@ export const MOODS: Mood[] = [
         to: 51,
         minutes: 2,
         stage: "closing",
+        themes: ["trust","patience"],
         note: {
           uz: "Bizga faqat Alloh yozgan narsa yetadi — tavakkulning asosi.",
           ru: "Нас постигает лишь то, что предписал Аллах — основа упования.",
@@ -693,13 +744,35 @@ export const TONES: Record<BackgroundId, Tone> = {
     accentSoft: "rgba(143, 182, 255, 0.18)",
     panel: "rgba(12, 20, 44, 0.92)",
   },
+  dawn: {
+    accent: "#ffc98b",
+    accentSoft: "rgba(255, 201, 139, 0.18)",
+    panel: "rgba(38, 24, 18, 0.92)",
+  },
+  rain: {
+    accent: "#9ec6e8",
+    accentSoft: "rgba(158, 198, 232, 0.18)",
+    panel: "rgba(16, 26, 34, 0.92)",
+  },
+  quiet: {
+    accent: "#b9c4d6",
+    accentSoft: "rgba(185, 196, 214, 0.16)",
+    panel: "rgba(10, 14, 22, 0.94)",
+  },
 };
 
 /* ————————————————————————————————————————————————————————————
    O'qish sahnasi — fonlar va tipografika
 ———————————————————————————————————————————————————————————— */
 
-export type BackgroundId = "nur" | "mushaf" | "sakinah" | "layl";
+export type BackgroundId =
+  | "nur"
+  | "mushaf"
+  | "sakinah"
+  | "layl"
+  | "dawn"
+  | "rain"
+  | "quiet";
 
 export const BACKGROUNDS: { id: BackgroundId; label: string; sub: L10n }[] = [
   {
@@ -722,7 +795,35 @@ export const BACKGROUNDS: { id: BackgroundId; label: string; sub: L10n }[] = [
     label: "Layl",
     sub: { uz: "tungi osmon", ru: "ночное небо", en: "night sky" },
   },
+  {
+    id: "dawn",
+    label: "Fajr",
+    sub: { uz: "tong yorishuvi", ru: "рассвет", en: "first light" },
+  },
+  {
+    id: "rain",
+    label: "Matar",
+    sub: { uz: "yomg'ir", ru: "дождь", en: "rain" },
+  },
+  {
+    id: "quiet",
+    label: "Sukut",
+    sub: { uz: "sokinlik", ru: "тишина", en: "stillness" },
+  },
 ];
+
+/**
+ * Har kayfiyatga mos atmosfera. Foydalanuvchi o'zi tanlamaguncha
+ * sessiya boshlanganda shu qo'yiladi.
+ */
+export const MOOD_BACKGROUND: Record<MoodId, BackgroundId> = {
+  anxious: "quiet",
+  grateful: "dawn",
+  grieving: "rain",
+  regretful: "layl",
+  guidance: "nur",
+  fear: "mushaf",
+};
 
 export type ScriptId = "uthmani" | "indopak";
 

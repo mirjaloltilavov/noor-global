@@ -75,6 +75,20 @@ export function Stage({
             <div className="sk-layer sk-stars" />
           </>
         )}
+        {background === "dawn" && (
+          <>
+            <div className="sk-layer sk-dawn" />
+            <div className="sk-layer sk-dawn-glow" />
+          </>
+        )}
+        {background === "rain" && (
+          <>
+            <div className="sk-layer sk-rain" />
+            <div className="sk-layer sk-rain-fall" />
+          </>
+        )}
+        {background === "quiet" && <div className="sk-layer sk-quiet" />}
+
         {/* Matn o'qilishi uchun yengil qoraytirish */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
       </div>
@@ -104,6 +118,19 @@ export function StageThumb({ background }: { background: BackgroundId }) {
             <span className="sk-layer sk-stars block" />
           </>
         )}
+        {background === "dawn" && (
+          <>
+            <span className="sk-layer sk-dawn block" />
+            <span className="sk-layer sk-dawn-glow block" />
+          </>
+        )}
+        {background === "rain" && (
+          <>
+            <span className="sk-layer sk-rain block" />
+            <span className="sk-layer sk-rain-fall block" />
+          </>
+        )}
+        {background === "quiet" && <span className="sk-layer sk-quiet block" />}
       </span>
     </span>
   );

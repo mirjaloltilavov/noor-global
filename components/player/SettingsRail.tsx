@@ -221,12 +221,14 @@ export function SettingsRail({
 
           {panel === "background" && (
             <Popover title={t("read.background")} onClose={() => setPanel(null)}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {BACKGROUNDS.map((b) => (
                   <button
                     key={b.id}
                     type="button"
-                    onClick={() => setPrefs({ background: b.id })}
+                    onClick={() =>
+                      setPrefs({ background: b.id, bgAuto: false })
+                    }
                     aria-pressed={prefs.background === b.id}
                     className={[
                       "rounded-xl border p-1 text-left transition",
@@ -254,6 +256,22 @@ export function SettingsRail({
                 max={100}
                 onChange={(v) => setPrefs({ brightness: v })}
               />
+
+              <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-3">
+                <span>
+                  <span className="block text-sm text-white/80">
+                    {t("read.bgAuto")}
+                  </span>
+                  <span className="block text-[11px] text-white/45">
+                    {t("read.bgAutoHint")}
+                  </span>
+                </span>
+                <Toggle
+                  label={t("read.bgAuto")}
+                  checked={prefs.bgAuto}
+                  onChange={(v) => setPrefs({ bgAuto: v })}
+                />
+              </div>
 
               <div className="mt-4 flex items-center justify-between gap-4">
                 <span>

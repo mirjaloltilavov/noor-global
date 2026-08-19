@@ -29,6 +29,8 @@ export interface Prefs {
   /** 30–100 */
   brightness: number;
   reduceMotion: boolean;
+  /** Fon kayfiyatga qarab o'zi tanlanadimi */
+  bgAuto: boolean;
   /** 0.5–2 */
   rate: number;
   repeat: RepeatMode;
@@ -60,6 +62,7 @@ export const DEFAULT_PREFS: Prefs = {
   showTransliteration: false,
   brightness: 72,
   reduceMotion: false,
+  bgAuto: true,
   rate: 1,
   repeat: "off",
   karaoke: true,

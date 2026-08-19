@@ -20,7 +20,14 @@ import {
   type Segment,
   type Track,
 } from "@/lib/queue";
-import { SURAHS, getMood, getReciter, type MoodId } from "@/lib/sakinah";
+import {
+  MOOD_BACKGROUND,
+  SURAHS,
+  getMood,
+  getReciter,
+  type MoodId,
+  type Passage,
+} from "@/lib/sakinah";
 import type { Ayah, Chapter } from "@/lib/quran";
 import { prefetchPassage, useChapters, usePassage } from "@/lib/useQuran";
 
@@ -87,6 +94,8 @@ interface PlayerValue {
   seekTo: (fraction: number) => void;
   jumpToSegment: (index: number) => void;
   jumpToAyah: (trackIndex: number) => void;
+  /** Kuratsiya qilingan parchani joriy navbatga qo'shib, unga o'tadi */
+  appendPassage: (p: Passage) => void;
 
   startVibe: (mood: MoodId) => void;
   startSurah: (surah: number, verses: number) => void;
@@ -314,13 +323,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       writeQueue("sakinah", segs, 0);
       setModeState("sakinah");
       setAudioMode("sakinah");
+      // Atmosfera kayfiyatga moslanadi (foydalanuvchi o'zi tanlamagan bo'lsa)
+      if (prefs.bgAuto) setPrefs({ background: MOOD_BACKGROUND[mood] });
       setVibe({ mood, startedAt: Date.now(), minutes: prefs.duration, done: false });
       setFinished(false);
       setReflecting(false);
       setMinimized(false);
       setPlaying(true);
     },
-    [prefs.duration, setVibe, writeQueue]
+    [prefs.duration, prefs.bgAuto, setPrefs, setVibe, writeQueue]
   );
 
   const startSurah = useCallback(
@@ -489,6 +500,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setPlaying(true);
   }, [audioMode, aCursor.pos, moveInQueue]);
 
+  const appendPassage = useCallback(
+    (p: Passage) => {
+      const seg: Segment = {
+        surah: p.surah,
+        from: p.from,
+        to: p.to,
+        minutes: p.minutes,
+        kind: "vibe",
+        stage: p.stage,
+        note: p.note,
+      };
+      const grown = [...aSegments, seg];
+      // Qo'shilgan parchaning birinchi oyati
+      const startPos = flattenTracks(aSegments).length;
+      writeQueue(audioMode, grown, startPos);
+      setAudioMode(audioMode);
+      setModeState(audioMode);
+      setPlaying(true);
+    },
+    [aSegments, audioMode, writeQueue]
+  );
+
   const continueSession = useCallback(() => {
     if (!vibe) return;
     writeQueue("sakinah", extendPlan(getMood(vibe.mood), aSegments, 20), aCursor.pos + 1);
@@ -560,6 +593,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       seekTo,
       jumpToSegment,
       jumpToAyah,
+      appendPassage,
       startVibe,
       startSurah,
       continueSession,
@@ -599,6 +633,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       seekTo,
       jumpToSegment,
       jumpToAyah,
+      appendPassage,
       startVibe,
       startSurah,
       continueSession,
