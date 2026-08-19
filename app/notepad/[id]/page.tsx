@@ -15,7 +15,8 @@ import { AppShell } from "@/components/shell/AppShell";
 import { TopBar } from "@/components/shell/TopBar";
 import { Icon } from "@/components/ui/Icon";
 import { getDoc, saveDoc, setLastDoc, wordCount, type Doc } from "@/lib/docs";
-import { renderMarkdown, tidy, toWordHtml } from "@/lib/format";
+import { copyRich, renderMarkdown, tidy, toWordHtml } from "@/lib/format";
+import { collectSources, sourcesSection } from "@/lib/templates";
 
 /** Hujjat muharriri — matn, «/» buyruqlari, ko'rinish va eksport */
 export default function Page() {
@@ -113,6 +114,15 @@ export default function Page() {
     const el = area.current;
     const to = el ? el.selectionStart : body.length;
 
+    if (cmd === "sources") {
+      // «/manbalar» yozuvi o'chiriladi, so'ng ro'yxat tuziladi
+      const el2 = area.current;
+      const end = el2 ? el2.selectionStart : body.length;
+      setBody(body.slice(0, from) + body.slice(end));
+      window.setTimeout(onSources, 0);
+      return;
+    }
+
     if (cmd === "quran" || cmd === "hadith") {
       setRange({ from, to });
       setPicker(cmd);
@@ -146,6 +156,30 @@ export default function Page() {
       0
     );
     setTidyNote(total > 0 ? t("doc.tidyDone", { n: String(total) }) : t("doc.tidyClean"));
+    window.setTimeout(() => setTidyNote(null), 4000);
+  }
+
+  /** Iqtiboslardan «Manbalar» bo'limini tuzadi yoki yangilaydi */
+  function onSources() {
+    const found = collectSources(body);
+    if (found.length === 0) {
+      setTidyNote(t("doc.sourcesNone"));
+      window.setTimeout(() => setTidyNote(null), 4000);
+      return;
+    }
+
+    const heading = t("doc.sources");
+    const section = sourcesSection(heading, found);
+    const marker = "## " + heading;
+    const at = body.indexOf(marker);
+
+    const next =
+      at >= 0
+        ? body.slice(0, at).trimEnd() + "\n\n" + section
+        : body.trimEnd() + "\n\n" + section;
+
+    setBody(next);
+    setTidyNote(t("doc.sourcesDone", { n: String(found.length) }));
     window.setTimeout(() => setTidyNote(null), 4000);
   }
 
@@ -216,10 +250,18 @@ export default function Page() {
               onClick={() => setPreview((v) => !v)}
             />
             <Tool icon="sparkle" label={t("doc.tidy")} onClick={onTidy} />
+            <Tool icon="list" label={t("doc.sources")} onClick={onSources} />
             <Tool
               icon="share"
               label={t("doc.copy")}
-              onClick={() => navigator.clipboard?.writeText(body)}
+              onClick={async () => {
+                const ok = await copyRich(
+                  toWordHtml(shownTitle, html),
+                  shownTitle + "\n\n" + body
+                );
+                setTidyNote(ok ? t("doc.copied") : t("common.error"));
+                window.setTimeout(() => setTidyNote(null), 3000);
+              }}
             />
             <Tool icon="arrowRight" label=".md" onClick={() => download("md")} />
             <Tool icon="arrowRight" label=".doc" onClick={() => download("doc")} />

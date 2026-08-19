@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { TemplatePicker } from "@/components/docs/TemplatePicker";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { useApp } from "@/components/providers/AppProvider";
 import { AppShell } from "@/components/shell/AppShell";
@@ -12,6 +13,7 @@ import {
   docTitle,
   duplicateDoc,
   removeDoc,
+  saveDoc,
   useDocs,
   wordCount,
 } from "@/lib/docs";
@@ -82,6 +84,7 @@ function Documents() {
   const router = useRouter();
   const docs = useDocs();
   const [query, setQuery] = useState("");
+  const [choosing, setChoosing] = useState(false);
 
   const shown = query.trim()
     ? docs.filter((d) =>
@@ -89,10 +92,7 @@ function Documents() {
       )
     : docs;
 
-  const start = () => {
-    const doc = createDoc("");
-    router.push(`/notepad/${doc.id}`);
-  };
+  const start = () => setChoosing(true);
 
   return (
     <>
@@ -162,7 +162,7 @@ function Documents() {
                       {docTitle(d, t("doc.untitled"))}
                     </p>
                     <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-ink-secondary">
-                      {d.body.replace(/[#>*_-]/g, " ").trim() || t("doc.blank")}
+                      {snippet(d.body, query) || t("doc.blank")}
                     </p>
                   </button>
 
@@ -199,8 +199,30 @@ function Documents() {
           )}
         </>
       )}
+
+      {choosing && (
+        <TemplatePicker
+          onClose={() => setChoosing(false)}
+          onPick={(tpl) => {
+            const doc = createDoc("");
+            if (tpl.body[locale]) saveDoc(doc.id, { body: tpl.body[locale] });
+            setChoosing(false);
+            router.push(`/notepad/${doc.id}`);
+          }}
+        />
+      )}
     </>
   );
+}
+
+/** Qidiruvda mos kelgan qatorni ko'rsatadi, bo'lmasa boshini */
+function snippet(body: string, query: string): string {
+  const clean = (s: string) => s.replace(/[#>*_]/g, " ").replace(/\s+/g, " ").trim();
+  const q = query.trim().toLowerCase();
+  if (!q) return clean(body);
+
+  const hit = body.split("\n").find((l) => l.toLowerCase().includes(q));
+  return hit ? clean(hit) : clean(body);
 }
 
 /* ——— Qur'on kundaligi ————————————————————————————— */

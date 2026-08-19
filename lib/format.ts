@@ -191,17 +191,70 @@ export function tidy(md: string): TidyResult {
   return { text: s, changes };
 }
 
-/** Word ochadigan HTML (.doc) — chop etish uchun ham shu qolip */
+/**
+ * Word ochadigan HTML (.doc) — chop etish uchun ham shu qolip.
+ * Sahifa o'lchami, chekkalar va arabcha matn uchun alohida uslub bor,
+ * shuning uchun Word'ga tushganda qayta bezash kerak bo'lmaydi.
+ */
 export function toWordHtml(title: string, bodyHtml: string): string {
+  const safe = title.replace(/[<>&]/g, "");
   return `<!doctype html>
-<html><head><meta charset="utf-8"><title>${title.replace(/[<>&]/g, "")}</title>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word">
+<head><meta charset="utf-8"><title>${safe}</title>
 <style>
-  body { font-family: Georgia, "Times New Roman", serif; font-size: 12pt; line-height: 1.6; color: #111; }
-  h1 { font-size: 20pt; } h2 { font-size: 16pt; } h3 { font-size: 13pt; }
-  blockquote { margin: 12pt 0 12pt 18pt; padding-left: 12pt; border-left: 2pt solid #999; color: #333; }
-  .doc-ar { font-size: 16pt; line-height: 2; }
+  @page { size: A4; margin: 2.5cm 2cm 2.5cm 3cm; }
+  body {
+    font-family: "Times New Roman", Georgia, serif;
+    font-size: 14pt; line-height: 1.5; color: #000;
+  }
+  h1 { font-size: 18pt; text-align: center; margin: 0 0 24pt; }
+  h2 { font-size: 15pt; margin: 20pt 0 8pt; }
+  h3 { font-size: 13pt; margin: 16pt 0 6pt; }
+  p  { margin: 0 0 10pt; text-align: justify; text-indent: 1.25cm; }
+  blockquote {
+    margin: 12pt 0 12pt 1.25cm; padding-left: 10pt;
+    border-left: 1pt solid #888; font-style: normal;
+  }
+  blockquote p { text-indent: 0; }
+  ul, ol { margin: 10pt 0 10pt 1.25cm; }
+  li { margin: 0 0 4pt; }
+  hr { border: 0; border-top: 1pt solid #bbb; margin: 18pt 0; }
+  .doc-ar {
+    display: block; direction: rtl; text-align: right;
+    font-family: "Traditional Arabic", "Times New Roman", serif;
+    font-size: 20pt; line-height: 2;
+  }
 </style></head>
-<body><h1>${title.replace(/[<>&]/g, "")}</h1>
+<body><h1>${safe}</h1>
 ${bodyHtml}
 </body></html>`;
+}
+
+/**
+ * Bezaklari bilan nusxa olish — Word yoki Google Docs'ga qo'yilganda
+ * sarlavha va iqtiboslar saqlanadi. Imkoni bo'lmasa oddiy matn ketadi.
+ */
+export async function copyRich(html: string, plain: string): Promise<boolean> {
+  try {
+    const anyWindow = window as unknown as {
+      ClipboardItem?: new (items: Record<string, Blob>) => unknown;
+    };
+    if (navigator.clipboard && anyWindow.ClipboardItem) {
+      const item = new anyWindow.ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([plain], { type: "text/plain" }),
+      });
+      await (
+        navigator.clipboard as unknown as {
+          write: (items: unknown[]) => Promise<void>;
+        }
+      ).write([item]);
+      return true;
+    }
+    await navigator.clipboard.writeText(plain);
+    return true;
+  } catch {
+    return false;
+  }
 }

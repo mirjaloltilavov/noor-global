@@ -11,7 +11,8 @@ export type CommandId =
   | "sub"
   | "quote"
   | "list"
-  | "rule";
+  | "rule"
+  | "sources";
 
 export interface Command {
   id: CommandId;
@@ -66,6 +67,13 @@ export function useCommands(): Command[] {
       label: t("cmd.list"),
       hint: t("cmd.listHint"),
       keys: ["royxat", "ro'yxat", "list", "список"],
+    },
+    {
+      id: "sources",
+      icon: "list",
+      label: t("cmd.sources"),
+      hint: t("cmd.sourcesHint"),
+      keys: ["manbalar", "manba", "sources", "источник", "bibliografiya"],
     },
     {
       id: "rule",
