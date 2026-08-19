@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AyahText } from "@/components/player/AyahText";
 import { usePlayer } from "@/components/player/PlayerProvider";
+import { JournalModal } from "@/components/player/JournalModal";
 import { SettingsRail } from "@/components/player/SettingsRail";
 import { useApp } from "@/components/providers/AppProvider";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -23,6 +24,7 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
   const { segment, track, ayah, ayahs, cursor } = player;
 
   const [listOpen, setListOpen] = useState(true);
+  const [journalOpen, setJournalOpen] = useState(false);
   const activeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -341,8 +343,15 @@ export function MajlisView({ onOpenSurahs }: { onOpenSurahs: () => void }) {
       <SettingsRail
         extra={[
           { icon: "quran", label: t("player.surahs"), onClick: onOpenSurahs },
+          {
+            icon: "notepad",
+            label: t("journal.title"),
+            onClick: () => setJournalOpen(true),
+          },
         ]}
       />
+
+      {journalOpen && <JournalModal onClose={() => setJournalOpen(false)} />}
     </div>
   );
 }

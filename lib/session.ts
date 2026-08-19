@@ -101,6 +101,18 @@ export interface SavedAyah {
   at: number;
 }
 
+export interface JournalEntry {
+  id: string;
+  at: number;
+  surah: number;
+  ayah: number;
+  /** Foydalanuvchi yozgani — bo'sh bo'lishi ham mumkin */
+  note: string;
+  /** Sessiya kayfiyati, agar vibe ichida yozilgan bo'lsa */
+  mood?: MoodId;
+}
+
+const JOURNAL_KEY = "noor.journal.v1";
 const SAVED_KEY = "noor.saved.v1";
 const PREFS_KEY = "noor.prefs.v2";
 const VIBE_KEY = "noor.vibe.v2";
@@ -150,6 +162,14 @@ export function loadHistory(): PastSession[] {
 
 export function saveHistory(list: PastSession[]): void {
   write(HISTORY_KEY, list.slice(0, 12));
+}
+
+export function loadJournal(): JournalEntry[] {
+  return readJson<JournalEntry[]>(JOURNAL_KEY) ?? [];
+}
+
+export function saveJournal(list: JournalEntry[]): void {
+  write(JOURNAL_KEY, list.slice(0, 500));
 }
 
 export function loadSaved(): SavedAyah[] {

@@ -65,6 +65,11 @@ interface PlayerValue {
   error: boolean;
   wordIndex: number;
 
+  /** «Tinglash + o'ylash» rejimida parcha tugagach to'xtaladi */
+  reflecting: boolean;
+  /** O'ylashdan keyin davom etish */
+  resumeAfterReflection: () => void;
+
   minimized: boolean;
   setMinimized: (v: boolean) => void;
   sleepMinutes: number;
@@ -122,6 +127,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [clipLength, setClipLength] = useState(0);
   const [finished, setFinished] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [reflecting, setReflecting] = useState(false);
   const [sleepMinutes, setSleepMinutesState] = useState(0);
   const [sleepDeadline, setSleepDeadline] = useState<number | null>(null);
   const [sleepLeft, setSleepLeft] = useState(0);
@@ -310,6 +316,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setAudioMode("sakinah");
       setVibe({ mood, startedAt: Date.now(), minutes: prefs.duration, done: false });
       setFinished(false);
+      setReflecting(false);
       setMinimized(false);
       setPlaying(true);
     },
@@ -358,9 +365,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         aTracks[nextPos].segment !== aSegIndex
       ) {
         moveInQueue(audioMode, aTracks.findIndex((x) => x.segment === aSegIndex));
-      } else {
-        moveInQueue(audioMode, nextPos);
+        return;
       }
+
+      // «Tinglash + o'ylash»: kuratsiya qilingan parcha tugadi — to'xtaymiz
+      const leavingSegment = aTracks[nextPos].segment !== aSegIndex;
+      if (
+        prefs.format === "reflect" &&
+        audioMode === "sakinah" &&
+        leavingSegment &&
+        aSegments[aSegIndex]?.kind === "vibe"
+      ) {
+        setPlaying(false);
+        setReflecting(true);
+        return;
+      }
+
+      moveInQueue(audioMode, nextPos);
       return;
     }
 
@@ -382,6 +403,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     aCursor.pos,
     aTracks,
     prefs.repeat,
+    prefs.format,
     aSegIndex,
     audioMode,
     vibe,
@@ -461,6 +483,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [vTracks.length, mode, moveInQueue]
   );
 
+  const resumeAfterReflection = useCallback(() => {
+    setReflecting(false);
+    moveInQueue(audioMode, aCursor.pos + 1);
+    setPlaying(true);
+  }, [audioMode, aCursor.pos, moveInQueue]);
+
   const continueSession = useCallback(() => {
     if (!vibe) return;
     writeQueue("sakinah", extendPlan(getMood(vibe.mood), aSegments, 20), aCursor.pos + 1);
@@ -514,6 +542,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       loading,
       error,
       wordIndex,
+      reflecting,
+      resumeAfterReflection,
       minimized,
       setMinimized,
       sleepMinutes,
@@ -556,6 +586,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       loading,
       error,
       wordIndex,
+      reflecting,
+      resumeAfterReflection,
       minimized,
       sleepMinutes,
       setSleepMinutes,

@@ -9,11 +9,13 @@ import {
   useState,
 } from "react";
 import { translate, type Locale } from "@/lib/i18n";
-import { resolveTranslation, type L10n } from "@/lib/sakinah";
+import { resolveTranslation, type L10n, type MoodId } from "@/lib/sakinah";
 import {
   DEFAULT_PREFS,
   loadHistory,
   loadPrefs,
+  loadJournal,
+  saveJournal,
   loadSaved,
   saveSaved,
   loadVibe,
@@ -22,6 +24,7 @@ import {
   saveVibe,
   type PastSession,
   type Prefs,
+  type JournalEntry,
   type SavedAyah,
   type VibeSession,
 } from "@/lib/session";
@@ -43,6 +46,15 @@ interface AppValue {
   saved: SavedAyah[];
   toggleSaved: (surah: number, ayah: number) => void;
   isSaved: (surah: number, ayah: number) => boolean;
+  /** Qur'on kundaligi — oyat + yozuv + sana */
+  journal: JournalEntry[];
+  addJournal: (e: {
+    surah: number;
+    ayah: number;
+    note: string;
+    mood?: MoodId;
+  }) => void;
+  removeJournal: (id: string) => void;
   history: PastSession[];
   pushHistory: (s: PastSession) => void;
   updateHistory: (id: string, patch: Partial<PastSession>) => void;
@@ -56,6 +68,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [vibe, setVibeState] = useState<VibeSession | null>(null);
   const [history, setHistory] = useState<PastSession[]>([]);
   const [saved, setSaved] = useState<SavedAyah[]>([]);
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
 
   // localStorage faqat brauzerda — birinchi renderdan keyin o'qiymiz,
   // shunda server va mijoz HTML'i mos keladi.
@@ -64,6 +77,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVibeState(loadVibe());
     setHistory(loadHistory());
     setSaved(loadSaved());
+    setJournal(loadJournal());
     setReady(true);
   }, []);
 
@@ -92,6 +106,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ? prev.filter((x) => !(x.surah === surah && x.ayah === ayah))
         : [{ surah, ayah, at: Date.now() }, ...prev];
       saveSaved(next);
+      return next;
+    });
+  }, []);
+
+  const addJournal = useCallback(
+    (e: { surah: number; ayah: number; note: string; mood?: MoodId }) => {
+      setJournal((prev) => {
+        const next = [
+          { ...e, id: `${e.surah}:${e.ayah}-${Date.now()}`, at: Date.now() },
+          ...prev,
+        ];
+        saveJournal(next);
+        return next;
+      });
+    },
+    []
+  );
+
+  const removeJournal = useCallback((id: string) => {
+    setJournal((prev) => {
+      const next = prev.filter((x) => x.id !== id);
+      saveJournal(next);
       return next;
     });
   }, []);
@@ -131,6 +167,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleSaved,
       isSaved: (surah, ayah) =>
         saved.some((x) => x.surah === surah && x.ayah === ayah),
+      journal,
+      addJournal,
+      removeJournal,
       history,
       pushHistory,
       updateHistory,
@@ -144,6 +183,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setVibe,
       saved,
       toggleSaved,
+      journal,
+      addJournal,
+      removeJournal,
       history,
       pushHistory,
       updateHistory,

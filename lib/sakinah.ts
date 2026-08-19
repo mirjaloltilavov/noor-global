@@ -567,7 +567,7 @@ export const DURATION_ARABIC: Record<Duration, string> = {
   0: "∞",
 };
 
-export type FormatId = "listen" | "both";
+export type FormatId = "listen" | "both" | "reflect";
 
 export const FORMATS: { id: FormatId; label: L10n; sub: L10n; arabic: string }[] =
   [
@@ -594,6 +594,20 @@ export const FORMATS: { id: FormatId; label: L10n; sub: L10n; arabic: string }[]
         en: "Recitation with the text",
       },
       arabic: "كِلَاهُمَا",
+    },
+    {
+      id: "reflect",
+      label: {
+        uz: "Tinglash + o'ylash",
+        ru: "Слушать + размышлять",
+        en: "Listen + reflect",
+      },
+      sub: {
+        uz: "Har parchadan keyin qisqa to'xtash",
+        ru: "Короткая пауза после каждого отрывка",
+        en: "A short pause after each passage",
+      },
+      arabic: "تَدَبُّر",
     },
   ];
 

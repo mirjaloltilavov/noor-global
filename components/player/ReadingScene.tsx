@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AyahText } from "@/components/player/AyahText";
 import { ClosingScreen } from "@/components/player/ClosingScreen";
+import { JournalModal } from "@/components/player/JournalModal";
+import { ReflectionCard } from "@/components/player/ReflectionCard";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { SettingsRail } from "@/components/player/SettingsRail";
 import { VibeChip } from "@/components/player/VibeChip";
@@ -30,6 +32,7 @@ export function ReadingScene({
   const player = usePlayer();
 
   const [controls, setControls] = useState(true);
+  const [journalOpen, setJournalOpen] = useState(false);
   const [showTip, setShowTip] = useState(false);
 
   const { segment, track, cursor, segments, segIndex, ayah, loading, error } =
@@ -62,9 +65,9 @@ export function ReadingScene({
     return () => window.clearTimeout(id);
   }, [segIndex]);
 
-  const showTranslation = prefs.showTranslation && prefs.format === "both";
+  const showTranslation = prefs.showTranslation && prefs.format !== "listen";
   const showTransliteration =
-    prefs.showTransliteration && prefs.format === "both";
+    prefs.showTransliteration && prefs.format !== "listen";
   const fontPx = ARABIC_SIZES[Math.min(prefs.fontSize, ARABIC_SIZES.length) - 1];
 
   const surahName = segment
@@ -276,7 +279,20 @@ export function ReadingScene({
         </div>
       </div>
 
-      <SettingsRail visible={controls} />
+      <SettingsRail
+        visible={controls}
+        extra={[
+          {
+            icon: "notepad",
+            label: t("journal.title"),
+            onClick: () => setJournalOpen(true),
+          },
+        ]}
+      />
+
+      {journalOpen && <JournalModal onClose={() => setJournalOpen(false)} />}
+
+      {player.reflecting && <ReflectionCard />}
 
       {player.finished && vibe && (
         <ClosingScreen
